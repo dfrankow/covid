@@ -1,0 +1,123 @@
+---
+title: "Minnesota Covid 19 data"
+# author: "Dan Frankowski"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    toc: TRUE
+    keep_tex: yes
+    # Needed for kableExtra, see https://stackoverflow.com/q/61780333
+    extra_dependencies: ["colortbl", "xcolor", "longtable"]
+    number_sections: no
+---
+
+# Introduction
+
+What is the trend in Covid-19 cases in Minnesota?
+
+# `r format(Sys.time(), '%B %e, %Y')`
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(kableExtra)
+
+knitr::opts_chunk$set(
+  # Don't put code in the doc
+  echo = FALSE,
+  # Don't put messages from code in the doc
+  message = FALSE,
+  # Don't put code warnings in the doc
+  warning = FALSE,
+  # stop on error instead of continuing
+  error = FALSE,
+  # Don't let figures float
+  # Needs "float" package, see https://stackoverflow.com/a/36234023/34935
+  fig.pos = "H",
+  # Default height 3.75 inches: two per page plus text
+  fig.height = 3.75
+)
+
+theme_set(theme_bw() +
+            theme(plot.title=element_text(size=25)))
+```
+
+```{r graphs, fig.show = "hold", out.width = "50%"}
+########## hospitalized
+
+hospdata <- read_tsv('data/hosptable.tsv')
+names(hospdata) <- c('date', 'icu', 'non_icu',
+                    'total_hosp', 'total_icu_hosp')
+hospdata <- hospdata %>% mutate(
+  date = as.Date(paste0("2020/", date), format="%Y/%m/%d")
+)
+
+# last 8 weeks
+first_day <- max(hospdata$date) - 28*2
+
+hospdata_long <- hospdata %>%
+  pivot_longer(c('icu', 'non_icu'))
+ggplot(hospdata_long %>% filter(date >= first_day),
+       aes(date, value, group=name, color=name)) +
+  geom_point() + geom_line() +
+  geom_smooth() +
+  labs(title="Hospitalized",
+       subtitle="as of the given date",
+       y="hospitalized as of given date")
+
+########## deaths
+
+deathdata <- read_tsv('data/deathtable.tsv')
+names(deathdata) <- c('date', 'daily_deaths', 'cumulative_deaths')
+deathdata <- deathdata %>% mutate(
+  date = as.Date(paste0("2020/", date), format="%Y/%m/%d")
+) %>%
+  filter(date >= first_day)
+ggplot(deathdata,
+       aes(date, daily_deaths)) + geom_point() + geom_line() +
+  geom_smooth() +
+  labs(title="Deaths")
+
+########## confirmed cases - last 7 days may be incomplete
+
+casedata <- read_tsv('data/casetable.tsv')
+names(casedata) <- c('date', 'daily_cases', 'cumulative_cases')
+casedata <- casedata %>% mutate(
+  date = as.Date(paste0("2020/", date), format="%Y/%m/%d")
+) %>%
+  filter(date >= first_day)
+ggplot(casedata,
+       aes(date, daily_cases)) + geom_point() + geom_line() +
+  geom_smooth(data=head(casedata,-7)) +
+  labs(title="Confirmed cases",
+       subtitle="Last 7 days may have incomplete data")
+
+
+########## tests - last 7 days may be incomplete
+
+labdata <- read_tsv('data/labtable.tsv')
+names(labdata) <- c('date', 'mn_lab_tests', 'ext_lab_tests',
+                    'total_cumulative_tests')
+labdata <- labdata %>% mutate(
+  date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+  daily_tests = mn_lab_tests + ext_lab_tests
+) %>%
+  filter(date >= first_day)
+ggplot(labdata, aes(date, daily_tests)) + geom_point() + geom_line() +
+  geom_smooth(data=head(labdata,-7)) +
+  labs(title="Tests",
+       subtitle="Last 7 days may have incomplete data")
+```
+
+Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html.
+
+The graphs are over the last 8 weeks (56 days), to let us see more recent trends.
+
+The trend lines end early for data that may be incomplete.
+
+The smoothing is default geom_smooth, which in this case is loess (local estimation).
+Roughly, it fits a low-degree polynomial to data points near the point in question.
+hen the grey shaded area is a 95% confidence interval, which roughly means there's
+a 95% chance the true mean is in that area.
+
+It sounds fancy, but I just use the default settings for the tool (ggplot),
+and it looks plausible.
