@@ -1,14 +1,7 @@
 ---
 title: "Minnesota Covid 19 data"
-# author: "Dan Frankowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-output:
-  pdf_document:
-    toc: TRUE
-    keep_tex: yes
-    # Needed for kableExtra, see https://stackoverflow.com/q/61780333
-    extra_dependencies: ["colortbl", "xcolor", "longtable"]
-    number_sections: no
+output: pdf_document
 ---
 
 # Introduction
