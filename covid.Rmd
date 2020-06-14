@@ -55,7 +55,8 @@ ggplot(hospdata_long %>% filter(date >= first_day),
   geom_smooth() +
   labs(title="Hospitalized",
        subtitle="as of the given date",
-       y="hospitalized as of given date")
+       y="hospitalized as of given date") +
+  scale_y_continuous(limits=c(0,NA))
 
 ########## deaths
 
@@ -68,7 +69,8 @@ deathdata <- deathdata %>% mutate(
 ggplot(deathdata,
        aes(date, daily_deaths)) + geom_point() + geom_line() +
   geom_smooth() +
-  labs(title="Deaths")
+  labs(title="Deaths") +
+  scale_y_continuous(limits=c(0,NA))
 
 ########## confirmed cases - last 7 days may be incomplete
 
@@ -82,7 +84,8 @@ ggplot(casedata,
        aes(date, daily_cases)) + geom_point() + geom_line() +
   geom_smooth(data=head(casedata,-7)) +
   labs(title="Confirmed cases",
-       subtitle="Last 7 days may have incomplete data")
+       subtitle="Last 7 days may have incomplete data") +
+  scale_y_continuous(limits=c(0,NA))
 
 
 ########## tests - last 7 days may be incomplete
@@ -92,13 +95,17 @@ names(labdata) <- c('date', 'mn_lab_tests', 'ext_lab_tests',
                     'total_cumulative_tests')
 labdata <- labdata %>% mutate(
   date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+  # commas throw things off
+  mn_lab_tests = as.integer(gsub(",", "", mn_lab_tests)),
+  ext_lab_tests = as.integer(gsub(",", "", ext_lab_tests)),
   daily_tests = mn_lab_tests + ext_lab_tests
 ) %>%
   filter(date >= first_day)
 ggplot(labdata, aes(date, daily_tests)) + geom_point() + geom_line() +
   geom_smooth(data=head(labdata,-7)) +
   labs(title="Tests",
-       subtitle="Last 7 days may have incomplete data")
+       subtitle="Last 7 days may have incomplete data") +
+  scale_y_continuous(limits=c(0,NA))
 ```
 
 Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html.
@@ -107,10 +114,10 @@ The graphs are over the last 8 weeks (56 days), to let us see more recent trends
 
 The trend lines end early for data that may be incomplete.
 
-The smoothing is default geom_smooth, which in this case is loess (local estimation).
-Roughly, it fits a low-degree polynomial to data points near the point in question.
-hen the grey shaded area is a 95% confidence interval, which roughly means there's
-a 95% chance the true mean is in that area.
-
+The grey area is a smoothed line with confidence bands.
+Technically, it's default geom_smooth, which in this case is loess (local estimation).
+Roughly, it fits a low-degree polynomial to data points near each point.
+The grey shaded area is a 95% confidence interval, which roughly means there's
+a 95% chance the true mean is in the band.
 It sounds fancy, but I just use the default settings for the tool (ggplot),
 and it looks plausible.
