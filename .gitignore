@@ -4,3 +4,13 @@
 .Ruserdata
 *.pdf
 *.html.*
+*.Rproj
+
+.venv
+figure
+
+tmp/
+data/
+
+*.csv
+
