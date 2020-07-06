@@ -41,7 +41,10 @@ hospdata <- read_tsv('data/hosptable.tsv')
 names(hospdata) <- c('date', 'icu', 'non_icu',
                     'total_hosp', 'total_icu_hosp')
 hospdata <- hospdata %>% mutate(
-  date = as.Date(paste0("2020/", date), format="%Y/%m/%d")
+  date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+  # july 4 had "-" in the data
+  icu = as.numeric(icu),
+  non_icu = as.numeric(non_icu)
 )
 
 # last 8 weeks
@@ -65,7 +68,9 @@ ggplot(hospdata_long %>% filter(date >= first_day),
 deathdata <- read_tsv('data/deathtable.tsv')
 names(deathdata) <- c('date', 'daily_deaths', 'cumulative_deaths')
 deathdata <- deathdata %>% mutate(
-  date = as.Date(paste0("2020/", date), format="%Y/%m/%d")
+  date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+  # july 4 had "-" in the data
+  daily_deaths = as.numeric(daily_deaths)
 ) %>%
   filter(date >= first_day)
 ggplot(deathdata,
