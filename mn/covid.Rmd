@@ -51,6 +51,9 @@ hospdata <- hospdata %>% mutate(
 first_day <- max(hospdata$date) - 28*2
 # last 4 weeks
 # first_day <- max(hospdata$date) - 28*1
+# last 365 days
+# first_day <- max(hospdata$date) - 365
+
 
 hospdata_long <- hospdata %>%
   pivot_longer(c('icu', 'non_icu'))
