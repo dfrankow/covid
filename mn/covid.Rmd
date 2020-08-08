@@ -47,20 +47,26 @@ hospdata <- hospdata %>% mutate(
   non_icu = as.numeric(non_icu)
 )
 
-# last 8 weeks
-first_day <- max(hospdata$date) - 28*2
 # last 4 weeks
 # first_day <- max(hospdata$date) - 28*1
+# last 8 weeks
+# first_day <- max(hospdata$date) - 28*2
+# last 12 weeks
+first_day <- max(hospdata$date) - 28*3
 # last 365 days
 # first_day <- max(hospdata$date) - 365
 
+# Controls the amount of smoothing for the default loess smoother.
+# Smaller numbers produce wigglier lines, larger numbers produce smoother lines.
+# default: 0.75
+loess_span <- 0.5
 
 hospdata_long <- hospdata %>%
   pivot_longer(c('icu', 'non_icu'))
 ggplot(hospdata_long %>% filter(date >= first_day),
        aes(date, value, group=name, color=name)) +
   geom_point() + geom_line() +
-  geom_smooth() +
+  geom_smooth(span=loess_span) +
   labs(title="Hospitalized",
        subtitle="as of the given date",
        y="hospitalized as of given date") +
@@ -78,7 +84,7 @@ deathdata <- deathdata %>% mutate(
   filter(date >= first_day)
 ggplot(deathdata,
        aes(date, daily_deaths)) + geom_point() + geom_line() +
-  geom_smooth() +
+  geom_smooth(span=loess_span) +
   labs(title="Deaths") +
   scale_y_continuous(limits=c(0,NA))
 
@@ -92,7 +98,7 @@ casedata <- casedata %>% mutate(
   filter(date >= first_day)
 ggplot(casedata,
        aes(date, daily_cases)) + geom_point() + geom_line() +
-  geom_smooth(data=head(casedata,-7)) +
+  geom_smooth(data=head(casedata,-7), span=loess_span) +
   labs(title="Confirmed cases",
        subtitle="Last 7 days may have incomplete data") +
   scale_y_continuous(limits=c(0,NA))
@@ -112,7 +118,7 @@ labdata <- labdata %>% mutate(
 ) %>%
   filter(date >= first_day)
 ggplot(labdata, aes(date, daily_tests)) + geom_point() + geom_line() +
-  geom_smooth(data=head(labdata,-7)) +
+  geom_smooth(data=head(labdata,-7), span=loess_span) +
   labs(title="Tests",
        subtitle="Last 7 days may have incomplete data") +
   scale_y_continuous(limits=c(0,NA))
