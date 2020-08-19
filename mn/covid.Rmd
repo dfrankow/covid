@@ -13,6 +13,7 @@ What is the trend in Covid-19 cases in Minnesota?
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(kableExtra)
+library(scales)
 
 knitr::opts_chunk$set(
   # Don't put code in the doc
@@ -93,15 +94,19 @@ ggplot(deathdata,
 casedata <- read_tsv('data/casetable.tsv')
 names(casedata) <- c('date', 'daily_cases', 'cumulative_cases')
 casedata <- casedata %>% mutate(
-  date = as.Date(paste0("2020/", date), format="%Y/%m/%d")
+  date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
 ) %>%
   filter(date >= first_day)
+# make alpha of last 7 days less
+casedata$alpha <- c(rep(1, nrow(casedata)-7), rep(0.4, 7))
 ggplot(casedata,
-       aes(date, daily_cases)) + geom_point() + geom_line() +
+       aes(date, daily_cases)) +
+  geom_point(aes(alpha=alpha)) + geom_line(aes(alpha=alpha)) +
   geom_smooth(data=head(casedata,-7), span=loess_span) +
   labs(title="Confirmed cases",
        subtitle="Last 7 days may have incomplete data") +
-  scale_y_continuous(limits=c(0,NA))
+  scale_y_continuous(limits=c(0,NA)) +
+  scale_alpha_identity()
 
 
 ########## tests - last 7 days may be incomplete
@@ -117,11 +122,28 @@ labdata <- labdata %>% mutate(
   daily_tests = mn_lab_tests + ext_lab_tests
 ) %>%
   filter(date >= first_day)
-ggplot(labdata, aes(date, daily_tests)) + geom_point() + geom_line() +
+# make alpha of last 7 days less
+labdata$alpha <- c(rep(1, nrow(labdata)-7), rep(0.4, 7))
+ggplot(labdata, aes(date, daily_tests)) +
+  geom_point(aes(alpha=alpha)) + geom_line(aes(alpha=alpha)) +
   geom_smooth(data=head(labdata,-7), span=loess_span) +
   labs(title="Tests",
        subtitle="Last 7 days may have incomplete data") +
-  scale_y_continuous(limits=c(0,NA))
+  scale_y_continuous(limits=c(0,NA)) +
+  scale_alpha_identity()
+
+############ positive test rate
+caselabdata <- casedata %>% inner_join(labdata, by=c('date'))
+
+ggplot(caselabdata, aes(date, daily_cases / daily_tests)) +
+  geom_point(aes(alpha=alpha.x)) + geom_line(aes(alpha=alpha.x)) +
+  geom_smooth(data=head(caselabdata,-7), span=loess_span) +
+  labs(title="Positive test rate",
+       subtitle="Last 7 days may have incomplete data",
+       y="cases / tests") +
+  scale_y_continuous(limits=c(0,NA), labels=percent) +
+  scale_alpha_identity() +
+  geom_hline(yintercept=0.05, linetype='dashed')
 ```
 
 Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html.
