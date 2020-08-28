@@ -98,7 +98,8 @@ casedata <- casedata %>% mutate(
 ) %>%
   filter(date >= first_day)
 # make alpha of last 7 days less
-casedata$alpha <- c(rep(1, nrow(casedata)-7), rep(0.4, 7))
+the_alpha <- 0.3
+casedata$alpha <- c(rep(1, nrow(casedata)-7), rep(the_alpha, 7))
 ggplot(casedata,
        aes(date, daily_cases)) +
   geom_point(aes(alpha=alpha)) + geom_line(aes(alpha=alpha)) +
@@ -123,7 +124,7 @@ labdata <- labdata %>% mutate(
 ) %>%
   filter(date >= first_day)
 # make alpha of last 7 days less
-labdata$alpha <- c(rep(1, nrow(labdata)-7), rep(0.4, 7))
+labdata$alpha <- c(rep(1, nrow(labdata)-7), rep(the_alpha, 7))
 ggplot(labdata, aes(date, daily_tests)) +
   geom_point(aes(alpha=alpha)) + geom_line(aes(alpha=alpha)) +
   geom_smooth(data=head(labdata,-7), span=loess_span) +
@@ -133,14 +134,42 @@ ggplot(labdata, aes(date, daily_tests)) +
   scale_alpha_identity()
 
 ############ positive test rate
-caselabdata <- casedata %>% inner_join(labdata, by=c('date'))
+caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
+  mutate(
+    positive_rate_daily = daily_cases / daily_tests,
+    c_daily_cases = cumsum(daily_cases),
+    c_daily_tests = cumsum(daily_tests),
+    daily_cases14 = c_daily_cases - lag(c_daily_cases, 14),
+    daily_tests14 = c_daily_tests - lag(c_daily_tests, 14),
+    positive_rate_14 = daily_cases14 / daily_tests14,
+    daily_cases7 = c_daily_cases - lag(c_daily_cases, 7),
+    daily_tests7 = c_daily_tests - lag(c_daily_tests, 7),
+    positive_rate_7 = daily_cases7 / daily_tests7)
 
-ggplot(caselabdata, aes(date, daily_cases / daily_tests)) +
+# For more discussion about this graph, see
+# https://www.reddit.com/r/CoronavirusMN/comments/ictujj/aug_19_mn_trend_update/g27gz3v?utm_source=share&utm_medium=web2x&context=3
+# ggplot(caselabdata, aes(date, positive_rate_daily)) +
+#   geom_point(aes(alpha=alpha.x)) + geom_line(aes(alpha=alpha.x)) +
+#   geom_smooth(data=head(caselabdata,-7), span=loess_span) +
+#   labs(title="Positive test rate (daily)",
+#        subtitle="Last 7 days may have incomplete data",
+#        y="confirmed cases / tests") +
+#   scale_y_continuous(limits=c(0,NA), labels=percent) +
+#   scale_alpha_identity() +
+#   geom_hline(yintercept=0.05, linetype='dashed')
+
+# might be able to put a grey rectangle with this, eventually:
+# https://stackoverflow.com/a/9969983/34935
+#+
+#  geom_rect(data.frame(xstart = c(max(caselabdata$date)-7)),
+#                       xend = c(max(caselabdata$date)),
+#            aes(xmin = xstart, xmax = xend, ymin = -Inf, ymax = Inf), alpha = 0.4)
+
+ggplot(caselabdata, aes(date, positive_rate_7)) +
   geom_point(aes(alpha=alpha.x)) + geom_line(aes(alpha=alpha.x)) +
-  geom_smooth(data=head(caselabdata,-7), span=loess_span) +
-  labs(title="Positive test rate",
+  labs(title="Positive test rate (7-day window)",
        subtitle="Last 7 days may have incomplete data",
-       y="cases / tests") +
+       y="confirmed cases / tests (rolling 7 days)") +
   scale_y_continuous(limits=c(0,NA), labels=percent) +
   scale_alpha_identity() +
   geom_hline(yintercept=0.05, linetype='dashed')
