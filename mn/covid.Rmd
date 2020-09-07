@@ -81,9 +81,8 @@ deathdata <- deathdata %>% mutate(
   date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
   # july 4 had "-" in the data
   daily_deaths = as.numeric(daily_deaths)
-) %>%
-  filter(date >= first_day)
-ggplot(deathdata,
+)
+ggplot(deathdata %>% filter(date >= first_day),
        aes(date, daily_deaths)) + geom_point() + geom_line() +
   geom_smooth(span=loess_span) +
   labs(title="Deaths") +
@@ -95,15 +94,15 @@ casedata <- read_tsv('data/casetable.tsv')
 names(casedata) <- c('date', 'daily_cases', 'cumulative_cases')
 casedata <- casedata %>% mutate(
   date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
-) %>%
-  filter(date >= first_day)
+)
 # make alpha of last 7 days less
 the_alpha <- 0.3
 casedata$alpha <- c(rep(1, nrow(casedata)-7), rep(the_alpha, 7))
-ggplot(casedata,
+casedataf <- casedata %>% filter(date >= first_day)
+ggplot(casedataf,
        aes(date, daily_cases)) +
   geom_point(aes(alpha=alpha)) + geom_line(aes(alpha=alpha)) +
-  geom_smooth(data=head(casedata,-7), span=loess_span) +
+  geom_smooth(data=head(casedataf,-7), span=loess_span) +
   labs(title="Confirmed cases",
        subtitle="Last 7 days may have incomplete data") +
   scale_y_continuous(limits=c(0,NA)) +
@@ -121,13 +120,13 @@ labdata <- labdata %>% mutate(
   mn_lab_tests = as.integer(gsub(",", "", mn_lab_tests)),
   ext_lab_tests = as.integer(gsub(",", "", ext_lab_tests)),
   daily_tests = mn_lab_tests + ext_lab_tests
-) %>%
-  filter(date >= first_day)
+)
 # make alpha of last 7 days less
 labdata$alpha <- c(rep(1, nrow(labdata)-7), rep(the_alpha, 7))
-ggplot(labdata, aes(date, daily_tests)) +
+labdataf <- labdata %>% filter(date >= first_day)
+ggplot(labdataf, aes(date, daily_tests)) +
   geom_point(aes(alpha=alpha)) + geom_line(aes(alpha=alpha)) +
-  geom_smooth(data=head(labdata,-7), span=loess_span) +
+  geom_smooth(data=head(labdataf,-7), span=loess_span) +
   labs(title="Tests",
        subtitle="Last 7 days may have incomplete data") +
   scale_y_continuous(limits=c(0,NA)) +
@@ -165,9 +164,10 @@ caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
 #                       xend = c(max(caselabdata$date)),
 #            aes(xmin = xstart, xmax = xend, ymin = -Inf, ymax = Inf), alpha = 0.4)
 
-ggplot(caselabdata, aes(date, positive_rate_7)) +
+ggplot(caselabdata %>% filter(date >= first_day),
+       aes(date, positive_rate_7)) +
   geom_point(aes(alpha=alpha.x)) + geom_line(aes(alpha=alpha.x)) +
-  labs(title="Positive test rate (7-day window)",
+  labs(title="Positive test rate (unofficial)",
        subtitle="Last 7 days may have incomplete data",
        y="confirmed cases / tests (rolling 7 days)") +
   scale_y_continuous(limits=c(0,NA), labels=percent) +
