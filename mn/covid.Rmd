@@ -32,7 +32,8 @@ knitr::opts_chunk$set(
 )
 
 theme_set(theme_bw() +
-            theme(plot.title=element_text(size=25)))
+            theme(plot.title=element_text(size=25),
+                  panel.grid = element_line(colour="grey85")))
 ```
 
 ```{r funcs}
@@ -63,7 +64,7 @@ change_in_percent <- function(vec, window_days, round_n=0) {
   sprintf(fmt, delta, 100* delta / last_minus, 1)
 }
 
-CHANGE_WINDOW <- 7
+CHANGE_WINDOW <- 14
 ```
 
 ```{r graphs, fig.show = "hold", out.width = "50%"}
@@ -114,11 +115,11 @@ hospdata_long <- hospdata %>%
   pivot_longer(c('icu', 'icu7', 'non_icu', 'non_icu7')) %>%
   filter(date >= first_day) %>%
   mutate(color = ifelse(name %in% c('icu', 'icu7'), 'icu', 'non_icu'),
-         size = ifelse(name %in% c('icu', 'non_icu'), 0.3, 1))
+         size = ifelse(name %in% c('icu', 'non_icu'), 0.25, 1))
 
 ggplot(hospdata_long %>% filter(name %in% c('icu', 'non_icu')),
        aes(date, value, group=name, color=color)) +
-  geom_point(alpha=0.3) +
+  geom_point(alpha=0.25) +
   geom_line(data=hospdata_long %>% filter(name %in% c('icu7', 'non_icu7')),
             aes(size=size, alpha=size)) +
   geom_line(data=hospdata_long %>% filter(name %in% c('icu', 'non_icu')),
@@ -126,14 +127,15 @@ ggplot(hospdata_long %>% filter(name %in% c('icu', 'non_icu')),
   labs(title="Hospitalized",
        subtitle=paste0(
                 "icu average ", round(tail(hospdata$icu7, 1)),
-                ", change ", icu7_delta7_percent,
+                ", 14-day change ", icu7_delta7_percent,
                 ", non_icu average ",
                 round(tail(hospdata$non_icu7, 1)),
-                ", change ", non_icu7_delta7_percent),
+                ", 14-day change ", non_icu7_delta7_percent),
        y="hospitalized as of given date.") +
   scale_y_continuous(limits=c(0,NA)) +
   scale_size_identity() +
-  scale_alpha_identity()
+  scale_alpha_identity() +
+  scale_x_date(date_minor_breaks="1 month")
 
 rm(hospdata)
 rm(hospdata_long)
@@ -152,16 +154,17 @@ deathdata <- deathdata %>%
 
 ggplot(deathdata %>% filter(date >= first_day),
        aes(date, daily_deaths)) +
-  geom_point(aes(y=daily_deaths), alpha=0.3) +
+  geom_point(aes(y=daily_deaths), alpha=0.25) +
   geom_line(aes(y=daily_deaths7), size=1) +
-  geom_line(aes(y=daily_deaths), alpha=0.3) +
+  geom_line(aes(y=daily_deaths), alpha=0.25) +
   labs(title="Daily deaths",
        subtitle=paste0(
          "average ", round(tail(deathdata$daily_deaths7, 1)),
-         ", change ",
+         ", 14-day change ",
          change_in_percent(deathdata$daily_deaths7, CHANGE_WINDOW))) +
   scale_y_continuous(limits=c(0,NA)) +
-  scale_alpha_identity()
+  scale_alpha_identity() +
+  scale_x_date(date_minor_breaks="1 month")
 
 ########## confirmed cases - last 7 days may be incomplete
 
@@ -175,7 +178,7 @@ casedata <- casedata %>%
 
 # make alpha of last 7 days less
 the_alpha <- 0.1
-casedata$alpha <- c(rep(0.3, nrow(casedata)-7), rep(the_alpha, 7))
+casedata$alpha <- c(rep(0.25, nrow(casedata)-7), rep(the_alpha, 7))
 casedataf <- casedata %>% filter(date >= first_day)
 casedataf1 <- head(casedataf,-7)
 ggplot(casedataf,
@@ -186,10 +189,12 @@ ggplot(casedataf,
   labs(title="Daily confirmed cases",
        subtitle=paste0(
          "average ", round(tail(casedataf1$daily_cases7, 1)),
-         ", change ", change_in_percent(casedataf1$daily_cases7, CHANGE_WINDOW), ".",
+         ", 14-day change ",
+         change_in_percent(casedataf1$daily_cases7, CHANGE_WINDOW), ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
-  scale_alpha_identity()
+  scale_alpha_identity() +
+  scale_x_date(date_minor_breaks="1 month")
 
 
 ########## tests - last 7 days may be incomplete
@@ -208,7 +213,7 @@ labdata <- labdata %>% mutate(
 
 
 # make alpha of last 7 days less
-labdata$alpha <- c(rep(0.3, nrow(labdata)-7), rep(the_alpha, 7))
+labdata$alpha <- c(rep(0.25, nrow(labdata)-7), rep(the_alpha, 7))
 labdataf <- labdata %>% filter(date >= first_day)
 labdataf1 <- head(labdataf, -7)
 ggplot(labdataf, aes(date, daily_tests)) +
@@ -218,15 +223,17 @@ ggplot(labdataf, aes(date, daily_tests)) +
   labs(title="Daily tests",
        subtitle=paste0(
          "average ", round(tail(labdataf1$daily_tests7, 1)),
-         ", change ", change_in_percent(labdataf1$daily_tests7, CHANGE_WINDOW), ".",
+         ", 14-day change ",
+         change_in_percent(labdataf1$daily_tests7, CHANGE_WINDOW), ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
-  scale_alpha_identity()
+  scale_alpha_identity() +
+  scale_x_date(date_minor_breaks="1 month")
 
 ############ positive test rate
 caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
   mutate(positive_rate7 = daily_cases7 / daily_tests7)
-caselabdata$alpha <- c(rep(1, nrow(caselabdata)-7), rep(0.3, 7))
+caselabdata$alpha <- c(rep(1, nrow(caselabdata)-7), rep(0.2, 7))
 
 caselabdataf <- head(caselabdata, -7)
 
@@ -237,13 +244,14 @@ ggplot(caselabdata %>% filter(date >= first_day),
   labs(title="Positive test rate (unofficial)",
        subtitle=paste0(
          "average ", round(tail(100*caselabdataf$positive_rate7, 1), 1),
-         "%, change ",
+         "%, 14-day change ",
          change_in_percent(100*caselabdataf$positive_rate7, CHANGE_WINDOW, 1), ".",
          "  Last 7 days may have incomplete data."),
        y="confirmed cases / tests (rolling 7 days)") +
   scale_y_continuous(limits=c(0,NA), labels=percent) +
   scale_alpha_identity() +
-  geom_hline(yintercept=0.05, linetype='dashed')
+  geom_hline(yintercept=0.05, linetype='dashed') +
+  scale_x_date(date_minor_breaks="1 month")
 ```
 
 Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html.
