@@ -71,17 +71,17 @@ CHANGE_WINDOW <- 14
 ########## hospitalized
 
 hospdata <- read_tsv('data/hosptable.tsv')
-names(hospdata) <- c('date', 'icu', 'non_icu',
+names(hospdata) <- c('date', 'icu_admits', 'all_admits',
                     'total_hosp', 'total_icu_hosp')
 hospdata <- hospdata %>% mutate(
   date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
   # july 4 had "-" in the data
-  icu = as.numeric(icu),
-  non_icu = as.numeric(non_icu)
+  icu_admits = as.numeric(icu_admits),
+  all_admits = as.numeric(all_admits)
 )
 
 # Weird data on Oct 3, 2020, where Oct 2 and 3 had a bunch of zeros
-# last_day <- hospdata %>% filter(non_icu > 0) %>% pull(date) %>% max(na.rm=T)
+# last_day <- hospdata %>% filter(all_admits > 0) %>% pull(date) %>% max(na.rm=T)
 last_day <- max(hospdata$date, na.rm=T)
 
 # last 4 weeks
@@ -102,36 +102,40 @@ last_day <- max(hospdata$date, na.rm=T)
 # default: 0.75
 loess_span <- 0.5
 
-hospdata <- add_rolling_num(hospdata, 'icu', 7)
-hospdata <- add_rolling_num(hospdata, 'non_icu', 7)
+hospdata <- add_rolling_num(hospdata, 'icu_admits', 7)
+hospdata <- add_rolling_num(hospdata, 'all_admits', 7)
 
-# change in icu7 over last 7 days
-icu7_delta7_percent <- change_in_percent(hospdata$icu7, CHANGE_WINDOW)
+hospdataf1 <- head(hospdata,-7)
 
-# change in non_icu7 over last 7 days
-non_icu7_delta7_percent <- change_in_percent(hospdata$non_icu7, CHANGE_WINDOW)
+# change in icu_admits7 over last 7 days
+icu_admits7_delta7_percent <- change_in_percent(hospdataf1$icu_admits7, CHANGE_WINDOW)
+
+# change in all_admits7 over last 7 days
+all_admits7_delta7_percent <- change_in_percent(hospdataf1$all_admits7, CHANGE_WINDOW)
 
 hospdata_long <- hospdata %>%
-  pivot_longer(c('icu', 'icu7', 'non_icu', 'non_icu7')) %>%
+  pivot_longer(c('icu_admits', 'icu_admits7', 'all_admits', 'all_admits7')) %>%
   filter(date >= first_day) %>%
-  mutate(color = ifelse(name %in% c('icu', 'icu7'), 'icu', 'non_icu'),
-         size = ifelse(name %in% c('icu', 'non_icu'), 0.25, 1))
+  mutate(color = ifelse(name %in% c('icu_admits', 'icu_admits7'), 'icu_admits', 'all_admits'),
+         size = ifelse(name %in% c('icu_admits', 'all_admits'), 0.25, 1)) %>%
+  filter(!(name %in% c('icu_admits7', 'all_admits7') & (date > max(hospdataf1$date, na.rm=T))))
 
-ggplot(hospdata_long %>% filter(name %in% c('icu', 'non_icu')),
+ggplot(hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
        aes(date, value, group=name, color=color)) +
   geom_point(alpha=0.25) +
-  geom_line(data=hospdata_long %>% filter(name %in% c('icu7', 'non_icu7')),
+  geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits7', 'all_admits7')),
             aes(size=size, alpha=size)) +
-  geom_line(data=hospdata_long %>% filter(name %in% c('icu', 'non_icu')),
+  geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
             aes(size=size, alpha=size)) +
-  labs(title="Hospitalized",
+  labs(title="Hospital admissions",
        subtitle=paste0(
-                "icu average ", round(tail(hospdata$icu7, 1)),
-                ", 14-day change ", icu7_delta7_percent,
-                ", non_icu average ",
-                round(tail(hospdata$non_icu7, 1)),
-                ", 14-day change ", non_icu7_delta7_percent),
-       y="hospitalized as of given date.") +
+                "icu admits average ", round(tail(hospdata$icu_admits7, 1)),
+                ", 14-day change ", icu_admits7_delta7_percent,
+                "\nall admits average ",
+                round(tail(hospdata$all_admits7, 1)),
+                ", 14-day change ", all_admits7_delta7_percent, "\n",
+                "Last 7 days may have incomplete data."),
+       y="admitted on a given date.") +
   scale_y_continuous(limits=c(0,NA)) +
   scale_size_identity() +
   scale_alpha_identity() +
