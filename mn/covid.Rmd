@@ -182,9 +182,10 @@ names(casedata) <- c(
   'cumulative_positive_cases')
 casedata <- casedata %>%
   mutate(
-    date = as.Date(paste0("2020/", date), format="%Y/%m/%d")
+    date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+    positive_cases = cumulative_positive_cases - lag(cumulative_positive_cases)
   ) %>%
-  add_rolling_num('confirmed_cases', 7)
+  add_rolling_num('positive_cases', 7)
 
 # make alpha of last 7 days less
 the_alpha <- 0.1
@@ -192,15 +193,15 @@ casedata$alpha <- c(rep(0.25, nrow(casedata)-7), rep(the_alpha, 7))
 casedataf <- casedata %>% filter(date >= first_day)
 casedataf1 <- head(casedataf,-7)
 ggplot(casedataf,
-       aes(date, confirmed_cases)) +
+       aes(date, positive_cases)) +
   geom_point(aes(alpha=alpha)) +
   geom_line(aes(alpha=alpha)) +
-  geom_line(data=casedataf1, aes(y=confirmed_cases7), size=1) +
-  labs(title="Daily confirmed cases",
+  geom_line(data=casedataf1, aes(y=positive_cases7), size=1) +
+  labs(title="Daily confirmed cases (PCR+antigen)",
        subtitle=paste0(
-         "average ", round(tail(casedataf1$confirmed_cases7, 1)),
+         "average ", round(tail(casedataf1$positive_cases7, 1)),
          ", 14-day change ",
-         change_in_percent(casedataf1$confirmed_cases7, CHANGE_WINDOW), ".",
+         change_in_percent(casedataf1$positive_cases7, CHANGE_WINDOW), ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
@@ -221,26 +222,27 @@ names(labdata) <- c(
 labdata <- labdata %>% mutate(
   date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
   # commas throw things off
-  # total_cumulative_tests = as.integer(gsub(",", "", total_cumulative_tests)),
+  total_cumulative_tests = as.integer(gsub(",", "", total_cumulative_tests)),
+  daily_tests = total_cumulative_tests - lag(total_cumulative_tests),
   cumulative_tests_pcr = as.integer(gsub(",", "", total_cumulative_tests)),
-  daily_tests_pcr = total_cumulative_tests - lag(total_cumulative_tests)
+  daily_tests_pcr = cumulative_tests_pcr - lag(cumulative_tests_pcr)
 ) %>%
-  add_rolling_num('daily_tests_pcr', 7)
+  add_rolling_num('daily_tests', 7)
 
 
 # make alpha of last 7 days less
 labdata$alpha <- c(rep(0.25, nrow(labdata)-7), rep(the_alpha, 7))
 labdataf <- labdata %>% filter(date >= first_day)
 labdataf1 <- head(labdataf, -7)
-ggplot(labdataf, aes(date, daily_tests_pcr)) +
+ggplot(labdataf, aes(date, daily_tests)) +
   geom_point(aes(alpha=alpha)) +
   geom_line(data=labdataf, aes(alpha=alpha)) +
-  geom_line(data=labdataf1, aes(y=daily_tests_pcr7), size=1) +
-  labs(title="Daily PCR tests",
+  geom_line(data=labdataf1, aes(y=daily_tests7), size=1) +
+  labs(title="Daily tests (PCR+antigen)",
        subtitle=paste0(
-         "average ", round(tail(labdataf1$daily_tests_pcr7, 1)),
+         "average ", round(tail(labdataf1$daily_tests7, 1)),
          ", 14-day change ",
-         change_in_percent(labdataf1$daily_tests_pcr7, CHANGE_WINDOW), ".",
+         change_in_percent(labdataf1$daily_tests7, CHANGE_WINDOW), ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
@@ -248,7 +250,7 @@ ggplot(labdataf, aes(date, daily_tests_pcr)) +
 
 ############ positive test rate
 caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
-  mutate(positive_rate7 = confirmed_cases7 / daily_tests_pcr7)
+  mutate(positive_rate7 = positive_cases7 / daily_tests7)
 caselabdata$alpha <- c(rep(1, nrow(caselabdata)-7), rep(0.2, 7))
 
 caselabdataf <- head(caselabdata, -7)
@@ -275,11 +277,3 @@ Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html.
 The graphs are over the last 8 weeks (56 days), to let us see more recent trends.
 
 The trend lines end early for data that may be incomplete.
-
-The grey area is a smoothed line with confidence bands.
-Technically, it's default geom_smooth, which in this case is loess (local estimation).
-Roughly, it fits a low-degree polynomial to data points near each point.
-The grey shaded area is a 95% confidence interval, which roughly means there's
-a 95% chance the true mean is in the band.
-It sounds fancy, but I just use the default settings for the tool (ggplot),
-and it looks plausible.
