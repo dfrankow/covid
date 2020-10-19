@@ -221,25 +221,26 @@ names(labdata) <- c(
 labdata <- labdata %>% mutate(
   date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
   # commas throw things off
-  total_cumulative_tests = as.integer(gsub(",", "", total_cumulative_tests)),
-  daily_tests = total_cumulative_tests - lag(total_cumulative_tests)
+  # total_cumulative_tests = as.integer(gsub(",", "", total_cumulative_tests)),
+  cumulative_tests_pcr = as.integer(gsub(",", "", total_cumulative_tests)),
+  daily_tests_pcr = total_cumulative_tests - lag(total_cumulative_tests)
 ) %>%
-  add_rolling_num('daily_tests', 7)
+  add_rolling_num('daily_tests_pcr', 7)
 
 
 # make alpha of last 7 days less
 labdata$alpha <- c(rep(0.25, nrow(labdata)-7), rep(the_alpha, 7))
 labdataf <- labdata %>% filter(date >= first_day)
 labdataf1 <- head(labdataf, -7)
-ggplot(labdataf, aes(date, daily_tests)) +
+ggplot(labdataf, aes(date, daily_tests_pcr)) +
   geom_point(aes(alpha=alpha)) +
   geom_line(data=labdataf, aes(alpha=alpha)) +
-  geom_line(data=labdataf1, aes(y=daily_tests7), size=1) +
-  labs(title="Daily tests",
+  geom_line(data=labdataf1, aes(y=daily_tests_pcr7), size=1) +
+  labs(title="Daily PCR tests",
        subtitle=paste0(
-         "average ", round(tail(labdataf1$daily_tests7, 1)),
+         "average ", round(tail(labdataf1$daily_tests_pcr7, 1)),
          ", 14-day change ",
-         change_in_percent(labdataf1$daily_tests7, CHANGE_WINDOW), ".",
+         change_in_percent(labdataf1$daily_tests_pcr7, CHANGE_WINDOW), ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
@@ -247,7 +248,7 @@ ggplot(labdataf, aes(date, daily_tests)) +
 
 ############ positive test rate
 caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
-  mutate(positive_rate7 = confirmed_cases7 / daily_tests7)
+  mutate(positive_rate7 = confirmed_cases7 / daily_tests_pcr7)
 caselabdata$alpha <- c(rep(1, nrow(caselabdata)-7), rep(0.2, 7))
 
 caselabdataf <- head(caselabdata, -7)
