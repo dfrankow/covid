@@ -37,10 +37,10 @@ theme_set(theme_bw() +
 ```
 
 ```{r funcs}
-add_rolling_num <- function(df, col, window_days) {
+add_rolling_num <- function(df, col, window_days, suffix="_rolling") {
   c_col <- paste0('c_', col)
   df[[c_col]][!is.na(df[[col]])] <- cumsum(df[[col]][!is.na(df[[col]])])
-  col1 <- paste0(col, window_days)
+  col1 <- paste0(col, suffix)
   df[[col1]] <- (df[[c_col]] - lag(df[[c_col]], window_days)) / window_days
   df
 }
@@ -65,6 +65,7 @@ change_in_percent <- function(vec, window_days, round_n=0) {
 }
 
 CHANGE_WINDOW <- 14
+ROLLING_WINDOW <- 7
 ```
 
 ```{r graphs, fig.show = "hold", out.width = "50%"}
@@ -102,38 +103,38 @@ last_day <- max(hospdata$date, na.rm=T)
 # default: 0.75
 loess_span <- 0.5
 
-hospdata <- add_rolling_num(hospdata, 'icu_admits', 7)
-hospdata <- add_rolling_num(hospdata, 'all_admits', 7)
+hospdata <- add_rolling_num(hospdata, 'icu_admits', ROLLING_WINDOW)
+hospdata <- add_rolling_num(hospdata, 'all_admits', ROLLING_WINDOW)
 
 hospdataf1 <- head(hospdata,-7)
 
-# change in icu_admits7 over last 7 days
-icu_admits7_delta7_percent <- change_in_percent(hospdataf1$icu_admits7, CHANGE_WINDOW)
+# change in icu_admits_rolling over last CHANGE_WINDOW days
+icu_admits_rolling_delta7_percent <- change_in_percent(hospdataf1$icu_admits_rolling, CHANGE_WINDOW)
 
-# change in all_admits7 over last 7 days
-all_admits7_delta7_percent <- change_in_percent(hospdataf1$all_admits7, CHANGE_WINDOW)
+# change in all_admits_rolling over last CHANGE_WINDOW days
+all_admits_rolling_delta7_percent <- change_in_percent(hospdataf1$all_admits_rolling, CHANGE_WINDOW)
 
 hospdata_long <- hospdata %>%
-  pivot_longer(c('icu_admits', 'icu_admits7', 'all_admits', 'all_admits7')) %>%
+  pivot_longer(c('icu_admits', 'icu_admits_rolling', 'all_admits', 'all_admits_rolling')) %>%
   filter(date >= first_day) %>%
-  mutate(color = ifelse(name %in% c('icu_admits', 'icu_admits7'), 'icu_admits', 'all_admits'),
+  mutate(color = ifelse(name %in% c('icu_admits', 'icu_admits_rolling'), 'icu_admits', 'all_admits'),
          size = ifelse(name %in% c('icu_admits', 'all_admits'), 0.25, 1)) %>%
-  filter(!(name %in% c('icu_admits7', 'all_admits7') & (date > max(hospdataf1$date, na.rm=T))))
+  filter(!(name %in% c('icu_admits_rolling', 'all_admits_rolling') & (date > max(hospdataf1$date, na.rm=T))))
 
 ggplot(hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
        aes(date, value, group=name, color=color)) +
   geom_point(alpha=0.25) +
-  geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits7', 'all_admits7')),
+  geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits_rolling', 'all_admits_rolling')),
             aes(size=size, alpha=size)) +
   geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
             aes(size=size, alpha=size)) +
   labs(title="Hospital admissions",
        subtitle=paste0(
-                "icu admits average ", round(tail(hospdata$icu_admits7, 1)),
-                ", 14-day change ", icu_admits7_delta7_percent,
+                "icu admits average ", round(tail(hospdata$icu_admits_rolling, 1)),
+                ", 14-day change ", icu_admits_rolling_delta7_percent,
                 "\nall admits average ",
-                round(tail(hospdata$all_admits7, 1)),
-                ", 14-day change ", all_admits7_delta7_percent, "\n",
+                round(tail(hospdata$all_admits_rolling, 1)),
+                ", 14-day change ", all_admits_rolling_delta7_percent, "\n",
                 "Last 7 days may have incomplete data."),
        y="admitted on a given date.") +
   scale_y_continuous(limits=c(0,NA)) +
@@ -154,18 +155,18 @@ deathdata <- deathdata %>%
     # july 4 had "-" in the data
     daily_deaths = as.numeric(daily_deaths)
   ) %>%
-  add_rolling_num('daily_deaths', 7)
+  add_rolling_num('daily_deaths', ROLLING_WINDOW)
 
 ggplot(deathdata %>% filter(date >= first_day),
        aes(date, daily_deaths)) +
   geom_point(aes(y=daily_deaths), alpha=0.25) +
-  geom_line(aes(y=daily_deaths7), size=1) +
+  geom_line(aes(y=daily_deaths_rolling), size=1) +
   geom_line(aes(y=daily_deaths), alpha=0.25) +
   labs(title="Daily deaths",
        subtitle=paste0(
-         "average ", round(tail(deathdata$daily_deaths7, 1)),
+         "average ", round(tail(deathdata$daily_deaths_rolling, 1)),
          ", 14-day change ",
-         change_in_percent(deathdata$daily_deaths7, CHANGE_WINDOW))) +
+         change_in_percent(deathdata$daily_deaths_rolling, CHANGE_WINDOW))) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
   scale_x_date(date_minor_breaks="1 month")
@@ -185,7 +186,7 @@ casedata <- casedata %>%
     date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
     positive_cases = cumulative_positive_cases - lag(cumulative_positive_cases)
   ) %>%
-  add_rolling_num('positive_cases', 7)
+  add_rolling_num('positive_cases', ROLLING_WINDOW)
 
 # make alpha of last 7 days less
 the_alpha <- 0.1
@@ -196,12 +197,12 @@ ggplot(casedataf,
        aes(date, positive_cases)) +
   geom_point(aes(alpha=alpha)) +
   geom_line(aes(alpha=alpha)) +
-  geom_line(data=casedataf1, aes(y=positive_cases7), size=1) +
+  geom_line(data=casedataf1, aes(y=positive_cases_rolling), size=1) +
   labs(title="Daily confirmed cases (PCR+antigen)",
        subtitle=paste0(
-         "average ", round(tail(casedataf1$positive_cases7, 1)),
+         "average ", round(tail(casedataf1$positive_cases_rolling, 1)),
          ", 14-day change ",
-         change_in_percent(casedataf1$positive_cases7, CHANGE_WINDOW), ".",
+         change_in_percent(casedataf1$positive_cases_rolling, CHANGE_WINDOW), ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
@@ -227,7 +228,7 @@ labdata <- labdata %>% mutate(
   cumulative_tests_pcr = as.integer(gsub(",", "", total_cumulative_tests)),
   daily_tests_pcr = cumulative_tests_pcr - lag(cumulative_tests_pcr)
 ) %>%
-  add_rolling_num('daily_tests', 7)
+  add_rolling_num('daily_tests', ROLLING_WINDOW)
 
 
 # make alpha of last 7 days less
@@ -237,12 +238,12 @@ labdataf1 <- head(labdataf, -7)
 ggplot(labdataf, aes(date, daily_tests)) +
   geom_point(aes(alpha=alpha)) +
   geom_line(data=labdataf, aes(alpha=alpha)) +
-  geom_line(data=labdataf1, aes(y=daily_tests7), size=1) +
+  geom_line(data=labdataf1, aes(y=daily_tests_rolling), size=1) +
   labs(title="Daily tests (PCR+antigen)",
        subtitle=paste0(
-         "average ", round(tail(labdataf1$daily_tests7, 1)),
+         "average ", round(tail(labdataf1$daily_tests_rolling, 1)),
          ", 14-day change ",
-         change_in_percent(labdataf1$daily_tests7, CHANGE_WINDOW), ".",
+         change_in_percent(labdataf1$daily_tests_rolling, CHANGE_WINDOW), ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
@@ -250,7 +251,7 @@ ggplot(labdataf, aes(date, daily_tests)) +
 
 ############ positive test rate
 caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
-  mutate(positive_rate7 = positive_cases7 / daily_tests7)
+  mutate(positive_rate7 = positive_cases_rolling / daily_tests_rolling)
 caselabdata$alpha <- c(rep(1, nrow(caselabdata)-7), rep(0.2, 7))
 
 caselabdataf <- head(caselabdata, -7)
