@@ -271,10 +271,76 @@ ggplot(caselabdata %>% filter(date >= first_day),
   scale_alpha_identity() +
   geom_hline(yintercept=0.05, linetype='dashed') +
   scale_x_date(date_minor_breaks="1 month")
+
+hospcapdata <- read_csv('data/HospitalCapacity_HistoricCSV_tcm1148-449110.csv')
+hospcapdata <- hospcapdata %>% rename(
+  date=`Data Date (MM/DD/YYYY)`,
+  value=Value_NUMBER,
+  metric=Metric
+)
+hospcapdata <- hospcapdata %>% mutate(
+  date = as.Date(date, "%m/%d/%Y"),
+  metric = gsub("Number of ", "", metric),
+  Detail2 = tolower(Detail2),
+  metric1 = if_else(metric == "beds",
+                    paste(metric, Detail1, coalesce(Detail3, "")),
+                    if_else(metric == "patients",
+                            paste(metric, Detail1, Detail3),
+                            if_else(metric == "ventilators",
+                                    paste(metric, Detail2, coalesce(Detail3, ""),
+                                          coalesce(Detail4, "")),
+                                    "??"
+                            ))),
+  metric1 = gsub("\\+", "", metric1),
+  metric1 = gsub(" +$", "", metric1)
+) %>%
+  arrange(date)
+
+# ggplot(hospcapdata, aes(date, value, group=metric1, color=metric1)) + geom_line()
+
+hospcapdata_wide <- hospcapdata %>%
+  pivot_wider(id_cols=date, names_from=metric1, values_from=value)
+hospcapdata_wide <- hospcapdata_wide %>%
+  mutate(
+    icu_bed_capacity_used = (`patients ICU COVID` + `patients ICU non-COVID`) /
+      `beds ICU`,
+    non_icu_bed_capacity_used = (`patients Non-ICU COVID` + `patients Non-ICU non-COVID`) /
+      `beds Non-ICU`,
+    ventilator_capacity_used = `ventilators in use` / `ventilators capacity`
+  )
+
+hospcapdata_used <- hospcapdata_wide %>%
+  select(date,
+         icu_bed_capacity_used,
+         non_icu_bed_capacity_used,
+         ventilator_capacity_used) %>%
+  pivot_longer(cols=c('icu_bed_capacity_used',
+                      'ventilator_capacity_used',
+                      'non_icu_bed_capacity_used'),
+               names_pattern = "(.+)_capacity_used",
+               names_to = "type", values_to="capacity_used")
+
+hospcapdata_maxdate <- max(hospcapdata$date)
+hospcapdata_used <- hospcapdata_used %>%
+  mutate(
+    type = recode(type,
+                  "icu_bed" = "ICU bed",
+                  "non_icu_bed" = "non-ICU bed"),
+    alpha = if_else(date >= (hospcapdata_maxdate - 7), 0.35, 1))
+
+ggplot(hospcapdata_used, aes(date, 100*capacity_used,
+                             group=type,
+                             color=type,
+                             alpha=alpha)) +
+  geom_line() + geom_point() +
+  scale_y_continuous(limits=c(NA, 100)) +
+  labs(title="Bed and ventilator capacity used",
+       subtitle="Not including surge capacity.  Data may change in last 7 days.",
+       y="% capacity used") +
+  scale_alpha_identity()
 ```
 
-Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html.
+Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html
+and https://mn.gov/covid19/data/response-prep/response-capacity.jsp.
 
-The graphs are over the last 8 weeks (56 days), to let us see more recent trends.
-
-The trend lines end early for data that may be incomplete.
+Capacity csv is at https://mn.gov/covid19/assets/HospitalCapacity_HistoricCSV_tcm1148-449110.csv.
