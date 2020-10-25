@@ -308,17 +308,25 @@ hospcapdata_wide <- hospcapdata_wide %>%
       `beds Non-ICU`,
     ventilator_capacity_used = `ventilators in use` / `ventilators capacity`
   )
+#%>%
+#  add_rolling_num('icu_bed_capacity_used', ROLLING_WINDOW) %>%
+#  add_rolling_num('non_icu_bed_capacity_used', ROLLING_WINDOW) %>%
+#  add_rolling_num('ventilator_capacity_used', ROLLING_WINDOW)
 
 hospcapdata_used <- hospcapdata_wide %>%
   select(date,
          icu_bed_capacity_used,
          non_icu_bed_capacity_used,
-         ventilator_capacity_used) %>%
-  pivot_longer(cols=c('icu_bed_capacity_used',
-                      'ventilator_capacity_used',
-                      'non_icu_bed_capacity_used'),
+         ventilator_capacity_used
+         # ,
+         # icu_bed_capacity_used_rolling,
+         # non_icu_bed_capacity_used_rolling,
+         # ventilator_capacity_used_rolling
+         ) %>%
+  pivot_longer(cols=!date,
                names_pattern = "(.+)_capacity_used",
                names_to = "type", values_to="capacity_used")
+
 
 hospcapdata_maxdate <- max(hospcapdata$date)
 hospcapdata_used <- hospcapdata_used %>%
@@ -326,16 +334,16 @@ hospcapdata_used <- hospcapdata_used %>%
     type = recode(type,
                   "icu_bed" = "ICU bed",
                   "non_icu_bed" = "non-ICU bed"),
-    alpha = if_else(date >= (hospcapdata_maxdate - 7), 0.35, 1))
+    alpha = if_else(date > (hospcapdata_maxdate - 4), 0.35, 1))
 
-ggplot(hospcapdata_used, aes(date, 100*capacity_used,
+ggplot(hospcapdata_used, aes(date, capacity_used,
                              group=type,
                              color=type,
                              alpha=alpha)) +
   geom_line() + geom_point() +
-  scale_y_continuous(limits=c(NA, 100)) +
+  scale_y_continuous(limits=c(0, 1), labels=scales::percent) +
   labs(title="Bed and ventilator capacity used",
-       subtitle="Not including surge capacity.  Data may change in last 7 days.",
+       subtitle="Not including surge capacity.  Data may change in last 4 days.",
        y="% capacity used") +
   scale_alpha_identity()
 ```
