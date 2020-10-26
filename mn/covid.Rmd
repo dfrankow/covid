@@ -68,6 +68,136 @@ CHANGE_WINDOW <- 14
 ROLLING_WINDOW <- 7
 ```
 
+```{r hospcapdata_graph}
+hospcapdata_graph <- function() {
+  hospcapdata <- read_csv('data/HospitalCapacity_HistoricCSV_tcm1148-449110.csv')
+  hospcapdata <- hospcapdata %>% rename(
+    date=`Data Date (MM/DD/YYYY)`,
+    value=Value_NUMBER,
+    metric=Metric
+  )
+  hospcapdata <- hospcapdata %>% mutate(
+    date = as.Date(date, "%m/%d/%Y"),
+    metric = gsub("Number of ", "", metric),
+    Detail2 = tolower(Detail2),
+    metric1 = if_else(metric == "beds",
+                      paste(metric, Detail1, coalesce(Detail3, "")),
+                      if_else(metric == "patients",
+                              paste(metric, Detail1, Detail3),
+                              if_else(metric == "ventilators",
+                                      paste(metric, Detail2, coalesce(Detail3, ""),
+                                            coalesce(Detail4, "")),
+                                      "??"
+                              ))),
+    metric1 = gsub("\\+", "", metric1),
+    metric1 = gsub(" +$", "", metric1)
+  ) %>%
+    arrange(date)
+  
+  # ggplot(hospcapdata, aes(date, value, group=metric1, color=metric1)) + geom_line()
+  
+  hospcapdata_wide <- hospcapdata %>%
+    pivot_wider(id_cols=date, names_from=metric1, values_from=value)
+  hospcapdata_wide <- hospcapdata_wide %>%
+    mutate(
+      icu_bed_capacity_used = (`patients ICU COVID` + `patients ICU non-COVID`) /
+        `beds ICU`,
+      non_icu_bed_capacity_used = (`patients Non-ICU COVID` + `patients Non-ICU non-COVID`) /
+        `beds Non-ICU`,
+      ventilator_capacity_used = `ventilators in use` / `ventilators capacity`
+    ) %>%
+    add_rolling_num('icu_bed_capacity_used', ROLLING_WINDOW) %>%
+    add_rolling_num('non_icu_bed_capacity_used', ROLLING_WINDOW) %>%
+    add_rolling_num('ventilator_capacity_used', ROLLING_WINDOW)
+  
+  hospcapdata_used <- hospcapdata_wide %>%
+    select(date,
+           icu_bed_capacity_used,
+           non_icu_bed_capacity_used,
+           ventilator_capacity_used,
+           icu_bed_capacity_used_rolling,
+           non_icu_bed_capacity_used_rolling,
+           ventilator_capacity_used_rolling
+    ) %>%
+    rename_with(~gsub('_capacity_used', '', .x)) %>%
+    pivot_longer(cols=!date,
+                 names_to = "type", values_to="capacity_used")
+  
+  hospcapdata_maxdate <- max(hospcapdata$date)
+  hospcapdata_used <- hospcapdata_used %>%
+    mutate(
+      type = gsub("non_icu_bed", "non-ICU bed", type),
+      type = gsub("icu_bed", "ICU bed", type),
+      type = gsub("_rolling", " (rolling)", type),
+      alpha = if_else(date > (hospcapdata_maxdate - 4), 0.4, 1),
+      alpha = if_else(!grepl("rolling", type), 0.35, alpha),
+      size = if_else(grepl("rolling", type), 2, 1),
+      name = if_else(grepl("ventilator", type), "ventilator",
+                     if_else(grepl("non-ICU bed", type), "non-ICU bed",
+                             if_else(grepl("ICU bed", type), "ICU bed",
+                                     "??"))))
+  
+  hospcapdata_wide_m4 <- head(hospcapdata_wide,-4)
+  
+  # change in icu_bed_capacity_used_rolling over last CHANGE_WINDOW days
+  icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$icu_bed_capacity_used_rolling, CHANGE_WINDOW)
+  
+  # change in non_icu_bed_capacity_used_rolling over last CHANGE_WINDOW days
+  non_icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$non_icu_bed_capacity_used_rolling, CHANGE_WINDOW)
+  
+  # change in ventilator_capacity_used_rolling over last CHANGE_WINDOW days
+  ventilator_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, CHANGE_WINDOW)
+  
+  ggplot(hospcapdata_used, aes(date, capacity_used,
+                               group=type,
+                               color=name,
+                               alpha=alpha,
+                               size=size)) +
+    geom_line() +
+    geom_point(data=hospcapdata_used %>% filter(!grepl("rolling", type))) +
+    scale_y_continuous(limits=c(0, 1), labels=scales::percent) +
+    labs(title="Bed and ventilator capacity used",
+         subtitle=paste(
+           "Not including surge capacity.  Data may change in last 4 days.",
+           paste0("icu bed capacity used average ",
+                  round(tail(100*hospcapdata_wide_m4$icu_bed_capacity_used_rolling, 1)),
+                  "%, 14-day change ", icu_bed_capacity_delta_percent),
+           paste0("non-icu bed capacity used average ",
+                  round(tail(100*hospcapdata_wide_m4$non_icu_bed_capacity_used_rolling, 1)),
+                  "%, 14-day change ", non_icu_bed_capacity_delta_percent),
+           paste0("ventilator capacity used average ",
+                  round(tail(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, 1)),
+                  "%, 14-day change ", ventilator_capacity_delta_percent),
+           sep="\n"),
+         y="% capacity used") +
+    scale_alpha_identity() +
+    scale_size_identity()
+  
+  # Older, simpler graph:
+  if (FALSE) {
+    ggplot(hospcapdata_used %>% filter(!grepl("rolling", type)),
+           aes(date, capacity_used,
+               group=type,
+               color=name,
+               alpha=if_else(date > (hospcapdata_maxdate-4), 0.35, 1))) +
+      geom_line() +
+      geom_point() +
+      scale_y_continuous(limits=c(0, 1), labels=scales::percent) +
+      labs(title="Bed and ventilator capacity used",
+           subtitle="Not including surge capacity.  Data may change in last 4 days.",
+           y="% capacity used") +
+      scale_alpha_identity() +
+      scale_size_identity()
+  }
+}
+```
+
+```{r days_on_hand_graph}
+days_on_hand_graph <- function() {
+  
+}
+```
+
 ```{r graphs, fig.show = "hold", out.width = "50%"}
 ########## hospitalized
 
@@ -272,125 +402,12 @@ ggplot(caselabdata %>% filter(date >= first_day),
   geom_hline(yintercept=0.05, linetype='dashed') +
   scale_x_date(date_minor_breaks="1 month")
 
-hospcapdata <- read_csv('data/HospitalCapacity_HistoricCSV_tcm1148-449110.csv')
-hospcapdata <- hospcapdata %>% rename(
-  date=`Data Date (MM/DD/YYYY)`,
-  value=Value_NUMBER,
-  metric=Metric
-)
-hospcapdata <- hospcapdata %>% mutate(
-  date = as.Date(date, "%m/%d/%Y"),
-  metric = gsub("Number of ", "", metric),
-  Detail2 = tolower(Detail2),
-  metric1 = if_else(metric == "beds",
-                    paste(metric, Detail1, coalesce(Detail3, "")),
-                    if_else(metric == "patients",
-                            paste(metric, Detail1, Detail3),
-                            if_else(metric == "ventilators",
-                                    paste(metric, Detail2, coalesce(Detail3, ""),
-                                          coalesce(Detail4, "")),
-                                    "??"
-                            ))),
-  metric1 = gsub("\\+", "", metric1),
-  metric1 = gsub(" +$", "", metric1)
-) %>%
-  arrange(date)
 
-# ggplot(hospcapdata, aes(date, value, group=metric1, color=metric1)) + geom_line()
-
-hospcapdata_wide <- hospcapdata %>%
-  pivot_wider(id_cols=date, names_from=metric1, values_from=value)
-hospcapdata_wide <- hospcapdata_wide %>%
-  mutate(
-    icu_bed_capacity_used = (`patients ICU COVID` + `patients ICU non-COVID`) /
-      `beds ICU`,
-    non_icu_bed_capacity_used = (`patients Non-ICU COVID` + `patients Non-ICU non-COVID`) /
-      `beds Non-ICU`,
-    ventilator_capacity_used = `ventilators in use` / `ventilators capacity`
-  ) %>%
-  add_rolling_num('icu_bed_capacity_used', ROLLING_WINDOW) %>%
-  add_rolling_num('non_icu_bed_capacity_used', ROLLING_WINDOW) %>%
-  add_rolling_num('ventilator_capacity_used', ROLLING_WINDOW)
-
-hospcapdata_used <- hospcapdata_wide %>%
-  select(date,
-         icu_bed_capacity_used,
-         non_icu_bed_capacity_used,
-         ventilator_capacity_used,
-         icu_bed_capacity_used_rolling,
-         non_icu_bed_capacity_used_rolling,
-         ventilator_capacity_used_rolling
-         ) %>%
-  rename_with(~gsub('_capacity_used', '', .x)) %>%
-  pivot_longer(cols=!date,
-               names_to = "type", values_to="capacity_used")
-
-hospcapdata_maxdate <- max(hospcapdata$date)
-hospcapdata_used <- hospcapdata_used %>%
-  mutate(
-    type = gsub("non_icu_bed", "non-ICU bed", type),
-    type = gsub("icu_bed", "ICU bed", type),
-    type = gsub("_rolling", " (rolling)", type),
-    alpha = if_else(date > (hospcapdata_maxdate - 4), 0.4, 1),
-    alpha = if_else(!grepl("rolling", type), 0.35, alpha),
-    size = if_else(grepl("rolling", type), 2, 1),
-    name = if_else(grepl("ventilator", type), "ventilator",
-                    if_else(grepl("non-ICU bed", type), "non-ICU bed",
-                            if_else(grepl("ICU bed", type), "ICU bed",
-                                    "??"))))
-
-hospcapdata_wide_m4 <- head(hospcapdata_wide,-4)
-
-# change in icu_bed_capacity_used_rolling over last CHANGE_WINDOW days
-icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$icu_bed_capacity_used_rolling, CHANGE_WINDOW)
-
-# change in non_icu_bed_capacity_used_rolling over last CHANGE_WINDOW days
-non_icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$non_icu_bed_capacity_used_rolling, CHANGE_WINDOW)
-
-# change in ventilator_capacity_used_rolling over last CHANGE_WINDOW days
-ventilator_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, CHANGE_WINDOW)
-
-ggplot(hospcapdata_used, aes(date, capacity_used,
-                             group=type,
-                             color=name,
-                             alpha=alpha,
-                             size=size)) +
-  geom_line() +
-  geom_point(data=hospcapdata_used %>% filter(!grepl("rolling", type))) +
-  scale_y_continuous(limits=c(0, 1), labels=scales::percent) +
-  labs(title="Bed and ventilator capacity used",
-       subtitle=paste(
-         "Not including surge capacity.  Data may change in last 4 days.",
-         paste0("icu bed capacity used average ",
-                round(tail(100*hospcapdata_wide_m4$icu_bed_capacity_used_rolling, 1)),
-                "%, 14-day change ", icu_bed_capacity_delta_percent),
-         paste0("non-icu bed capacity used average ",
-                round(tail(100*hospcapdata_wide_m4$non_icu_bed_capacity_used_rolling, 1)),
-                "%, 14-day change ", non_icu_bed_capacity_delta_percent),
-         paste0("ventilator capacity used average ",
-                round(tail(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, 1)),
-                "%, 14-day change ", ventilator_capacity_delta_percent),
-         sep="\n"),
-       y="% capacity used") +
-  scale_alpha_identity() +
-  scale_size_identity()
-
-# Older, simpler graph:
 if (FALSE) {
-  ggplot(hospcapdata_used %>% filter(!grepl("rolling", type)),
-         aes(date, capacity_used,
-             group=type,
-             color=name,
-             alpha=if_else(date > (hospcapdata_maxdate-4), 0.35, 1))) +
-    geom_line() +
-    geom_point() +
-    scale_y_continuous(limits=c(0, 1), labels=scales::percent) +
-    labs(title="Bed and ventilator capacity used",
-         subtitle="Not including surge capacity.  Data may change in last 4 days.",
-         y="% capacity used") +
-    scale_alpha_identity() +
-    scale_size_identity()
+  hospcapdata_graph()
 }
+
+days_on_hand_graph()
 ```
 
 Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html
