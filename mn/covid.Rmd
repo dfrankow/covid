@@ -334,7 +334,7 @@ ggplot(casedataf,
   geom_point(aes(alpha=alpha)) +
   geom_line(aes(alpha=alpha)) +
   geom_line(data=casedataf1, aes(y=positive_cases_rolling), size=1) +
-  labs(title="Daily confirmed cases (PCR+antigen)",
+  labs(title="Daily cases (PCR+antigen)",
        subtitle=paste0(
          "average ", round(tail(casedataf1$positive_cases_rolling, 1)),
          ", 14-day change ",
