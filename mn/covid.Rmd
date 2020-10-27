@@ -194,7 +194,13 @@ hospcapdata_graph <- function() {
 
 ```{r days_on_hand_graph}
 days_on_hand_graph <- function() {
+  daysonhand <- read_csv('data/DaysonHand_CCS_Chart_tcm1148-430853.csv') %>%
+    rename(date=`Data Date`) %>%
+    mutate(date = as.Date(date, format="%m/%d/%Y"))
   
+  ggplot(daysonhand %>% filter(Location=="Hospital"),
+         aes(date, `Days on Hand`,
+             group=Item, color=Item)) + geom_point() + geom_line()
 }
 ```
 
@@ -405,9 +411,8 @@ ggplot(caselabdata %>% filter(date >= first_day),
 
 if (FALSE) {
   hospcapdata_graph()
+  days_on_hand_graph()
 }
-
-days_on_hand_graph()
 ```
 
 Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html
