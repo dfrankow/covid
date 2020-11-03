@@ -148,7 +148,7 @@ hospcapdata_graph <- function() {
   # change in ventilator_capacity_used_rolling over last CHANGE_WINDOW days
   ventilator_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, CHANGE_WINDOW)
   
-  ggplot(hospcapdata_used, aes(date, capacity_used,
+  p <- ggplot(hospcapdata_used, aes(date, capacity_used,
                                group=type,
                                color=name,
                                alpha=alpha,
@@ -175,7 +175,7 @@ hospcapdata_graph <- function() {
   
   # Older, simpler graph:
   if (FALSE) {
-    ggplot(hospcapdata_used %>% filter(!grepl("rolling", type)),
+    p <- ggplot(hospcapdata_used %>% filter(!grepl("rolling", type)),
            aes(date, capacity_used,
                group=type,
                color=name,
@@ -189,6 +189,7 @@ hospcapdata_graph <- function() {
       scale_alpha_identity() +
       scale_size_identity()
   }
+  p
 }
 ```
 
