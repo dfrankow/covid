@@ -279,8 +279,8 @@ ggplot(hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
   scale_alpha_identity() +
   scale_x_date(date_minor_breaks="1 month")
 
-rm(hospdata)
-rm(hospdata_long)
+# rm(hospdata)
+# rm(hospdata_long)
 
 ########## deaths
 
@@ -420,3 +420,22 @@ Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html
 and https://mn.gov/covid19/data/response-prep/response-capacity.jsp.
 
 Capacity csv is at https://mn.gov/covid19/assets/HospitalCapacity_HistoricCSV_tcm1148-449110.csv.
+
+Latest data dates:
+
+```{r latest_dates}
+dates <- data.frame(stringsAsFactors = F)
+dates <- rbind(dates,
+               hospdata_long %>% group_by(name) %>%
+                 summarize(max_date=max(date)))
+dates <- rbind(dates,
+               data.frame(name="deaths", max_date=max(deathdata$date)))
+dates <- rbind(dates,
+               data.frame(name="cases", max_date=max(casedataf$date)))
+dates <- rbind(dates,
+               data.frame(name="tests", max_date=max(labdataf$date)))
+dates <- rbind(dates,
+               data.frame(name="rates", max_date=max(caselabdata$date)))
+
+kable(dates)
+```
