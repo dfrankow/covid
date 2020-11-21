@@ -61,7 +61,8 @@ change_in_percent <- function(vec, window_days, round_n=0) {
   last_minus <- head(tail(vec, window_days+1), 1)
   delta <- (last - last_minus)
   fmt <- paste0("%+.", round_n, "f (%+.", round_n, "f%%)")
-  sprintf(fmt, delta, 100* delta / last_minus, 1)
+  list(delta=delta, percent=100*delta/last_minus,
+       str=sprintf(fmt, delta, 100* delta / last_minus, 1))
 }
 
 CHANGE_WINDOW <- 14
@@ -140,13 +141,13 @@ hospcapdata_graph <- function() {
   hospcapdata_wide_m4 <- head(hospcapdata_wide,-4)
   
   # change in icu_bed_capacity_used_rolling over last CHANGE_WINDOW days
-  icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$icu_bed_capacity_used_rolling, CHANGE_WINDOW)
+  icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$icu_bed_capacity_used_rolling, CHANGE_WINDOW)$str
   
   # change in non_icu_bed_capacity_used_rolling over last CHANGE_WINDOW days
-  non_icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$non_icu_bed_capacity_used_rolling, CHANGE_WINDOW)
+  non_icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$non_icu_bed_capacity_used_rolling, CHANGE_WINDOW)$str
   
   # change in ventilator_capacity_used_rolling over last CHANGE_WINDOW days
-  ventilator_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, CHANGE_WINDOW)
+  ventilator_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, CHANGE_WINDOW)$str
   
   p <- ggplot(hospcapdata_used, aes(date, capacity_used,
                                group=type,
@@ -246,10 +247,12 @@ hospdata <- add_rolling_num(hospdata, 'all_admits', ROLLING_WINDOW)
 hospdataf1 <- head(hospdata,-7)
 
 # change in icu_admits_rolling over last CHANGE_WINDOW days
-icu_admits_rolling_delta7_percent <- change_in_percent(hospdataf1$icu_admits_rolling, CHANGE_WINDOW)
+icu_admits_rolling_delta7_percent_l <- change_in_percent(hospdataf1$icu_admits_rolling, CHANGE_WINDOW)
+icu_admits_rolling_delta7_percent <- icu_admits_rolling_delta7_percent_l$str
 
 # change in all_admits_rolling over last CHANGE_WINDOW days
-all_admits_rolling_delta7_percent <- change_in_percent(hospdataf1$all_admits_rolling, CHANGE_WINDOW)
+all_admits_rolling_delta7_percent_l <- change_in_percent(hospdataf1$all_admits_rolling, CHANGE_WINDOW)
+all_admits_rolling_delta7_percent <- all_admits_rolling_delta7_percent_l$str
 
 hospdata_long <- hospdata %>%
   pivot_longer(c('icu_admits', 'icu_admits_rolling', 'all_admits', 'all_admits_rolling')) %>%
@@ -294,6 +297,9 @@ deathdata <- deathdata %>%
   ) %>%
   add_rolling_num('daily_deaths', ROLLING_WINDOW)
 
+change_in_daily_deaths_rolling_l <- change_in_percent(deathdata$daily_deaths_rolling, CHANGE_WINDOW)
+latest_daily_deaths_rolling <- round(tail(deathdata$daily_deaths_rolling, 1))
+latest_daily_deaths <- tail(deathdata$daily_deaths, 1)
 ggplot(deathdata %>% filter(date >= first_day),
        aes(date, daily_deaths)) +
   geom_point(aes(y=daily_deaths), alpha=0.25) +
@@ -301,9 +307,9 @@ ggplot(deathdata %>% filter(date >= first_day),
   geom_line(aes(y=daily_deaths), alpha=0.25) +
   labs(title="Daily deaths",
        subtitle=paste0(
-         "average ", round(tail(deathdata$daily_deaths_rolling, 1)),
+         "average ", latest_daily_deaths,
          ", 14-day change ",
-         change_in_percent(deathdata$daily_deaths_rolling, CHANGE_WINDOW))) +
+         change_in_daily_deaths_rolling_l$str)) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
   scale_x_date(date_minor_breaks="1 month")
@@ -330,6 +336,8 @@ the_alpha <- 0.1
 casedata$alpha <- c(rep(0.25, nrow(casedata)-7), rep(the_alpha, 7))
 casedataf <- casedata %>% filter(date >= first_day)
 casedataf1 <- head(casedataf,-7)
+change_in_cases_rolling_l <- change_in_percent(casedataf1$positive_cases_rolling, CHANGE_WINDOW)
+latest_cases_rolling <- tail(casedataf1$positive_cases_rolling, 1)
 ggplot(casedataf,
        aes(date, positive_cases)) +
   geom_point(aes(alpha=alpha)) +
@@ -339,7 +347,7 @@ ggplot(casedataf,
        subtitle=paste0(
          "average ", round(tail(casedataf1$positive_cases_rolling, 1)),
          ", 14-day change ",
-         change_in_percent(casedataf1$positive_cases_rolling, CHANGE_WINDOW), ".",
+         change_in_cases_rolling_l$str, ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
@@ -372,6 +380,7 @@ labdata <- labdata %>% mutate(
 labdata$alpha <- c(rep(0.25, nrow(labdata)-7), rep(the_alpha, 7))
 labdataf <- labdata %>% filter(date >= first_day)
 labdataf1 <- head(labdataf, -7)
+change_in_daily_tests_rolling_l <- change_in_percent(labdataf1$daily_tests_rolling, CHANGE_WINDOW)
 ggplot(labdataf, aes(date, daily_tests)) +
   geom_point(aes(alpha=alpha)) +
   geom_line(data=labdataf, aes(alpha=alpha)) +
@@ -380,7 +389,7 @@ ggplot(labdataf, aes(date, daily_tests)) +
        subtitle=paste0(
          "average ", round(tail(labdataf1$daily_tests_rolling, 1)),
          ", 14-day change ",
-         change_in_percent(labdataf1$daily_tests_rolling, CHANGE_WINDOW), ".",
+         change_in_daily_tests_rolling_l$str, ".",
          "  Last 7 days may have incomplete data.")) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
@@ -393,6 +402,8 @@ caselabdata$alpha <- c(rep(1, nrow(caselabdata)-7), rep(0.2, 7))
 
 caselabdataf <- head(caselabdata, -7)
 
+change_in_pos_rate_l <- change_in_percent(100*caselabdataf$positive_rate7, CHANGE_WINDOW, 1)
+latest_pos_rate_rolling <- tail(caselabdataf$positive_rate7, 1)
 ggplot(caselabdata %>% filter(date >= first_day),
        aes(date, positive_rate7)) +
   geom_point(aes(alpha=alpha)) +
@@ -401,7 +412,7 @@ ggplot(caselabdata %>% filter(date >= first_day),
        subtitle=paste0(
          "average ", round(tail(100*caselabdataf$positive_rate7, 1), 1),
          "%, 14-day change ",
-         change_in_percent(100*caselabdataf$positive_rate7, CHANGE_WINDOW, 1), ".",
+         change_in_pos_rate_l$str, ".",
          "  Last 7 days may have incomplete data."),
        y="confirmed cases / tests (rolling 7 days)") +
   scale_y_continuous(limits=c(0,NA), labels=percent) +
@@ -421,7 +432,7 @@ and https://mn.gov/covid19/data/response-prep/response-capacity.jsp.
 
 Capacity csv is at https://mn.gov/covid19/assets/HospitalCapacity_HistoricCSV_tcm1148-449110.csv.
 
-Latest data dates:
+## Latest data dates
 
 ```{r latest_dates}
 dates <- data.frame(stringsAsFactors = F)
@@ -439,3 +450,30 @@ dates <- rbind(dates,
 
 kable(dates)
 ```
+
+## Paragraph summary
+
+```{r read_latest_cases}
+dct <- read_tsv('data/dailycasetotal.tsv', col_names=c('label', 'num'))
+todays_cases <- dct %>% filter(label=="Newly reported cases") %>% pull(num)
+```
+
+From the 14-day changes using confirmed data (all delayed 7 days except for deaths), the trends:
+
+- hospital admissions: icu admits **up**
+ `r sprintf("%+.0f%%", icu_admits_rolling_delta7_percent_l$percent)`,
+ all admits **up** `r sprintf("%+.0f%%", all_admits_rolling_delta7_percent_l$percent)`
+
+- daily deaths **up**
+ `r sprintf("%+.0f", change_in_daily_deaths_rolling_l$delta)`
+  (`r sprintf("%+.0f%%", change_in_daily_deaths_rolling_l$percent)`)
+  to an average of `r latest_daily_deaths_rolling`. (Today: `r latest_daily_deaths`.)
+
+- daily cases **up** `r sprintf("%+.0f%%", change_in_cases_rolling_l$percent)`,
+  to **`r round(latest_cases_rolling)` per day** (7 days ago). (Today's cases: **`r todays_cases`**.)
+
+- daily tests **up** `r sprintf("%+.0f%%", change_in_daily_tests_rolling_l$percent)`
+
+- positive test rate (unofficial): **`r sprintf("%+.1f%%", 100*latest_pos_rate_rolling)`** (>=5%),
+ **up** `r sprintf("%+.1f%%", change_in_pos_rate_l$delta)`
+
