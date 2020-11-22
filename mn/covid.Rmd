@@ -192,17 +192,27 @@ hospcapdata_graph <- function() {
 
 ```{r per_county_graph}
 rate_per_county_graph <- function(num_panels=2) {
-  wcr_by_county <- read_csv('data/wcrmap.csv') %>%
+  wcr_by_county_raw <- read_csv('data/wcrmap.csv')
+  wcr_by_county <- wcr_by_county_raw %>%
     mutate(panel = floor((row_number()-1) / 88 * num_panels)) %>%
     pivot_longer(starts_with('Week'), names_to='week') %>%
     mutate(week1 = gsub("Week \\d+: ", "", week),
            week1a = gsub("-", "-\n", week1),
+           # week1b is "41, "42", "43", ..
+           week1b = gsub("Week (\\d+):.+", "\\1", week),
 #           value1 = cut(value, c(0,5,10,15,25,50,75,100,Inf)),
            value1 = cut(value, c(0,10,25,50,75,Inf)),
            value1 = factor(if_else(value == 0, "0",
                                    as.character(value1)),
-                           levels=c("0",levels(value1))))
+                           levels=c("0",levels(value1)))) %>%
+    mutate(
+      # level week1a by its occurrence in wcr_by_county
+      # this relies on the weeks being in order after pivot_longer,
+      # but that seems like a good bet to me
+      week1a = factor(week1a, levels=unique(week1a))
+    )
 
+  # rate level names:
   levels(wcr_by_county$value1) <-
     c("0", ">0 to <10", "10 to <25", "25 to <50",
       '50 to <75', '>=75')
@@ -211,12 +221,13 @@ rate_per_county_graph <- function(num_panels=2) {
   #   c("0", ">0 to <5", "5 to <10", "10 to <15", "15 to <25", "25 to <50",
   #     '50 to <75', '75 to <100', ">=100")
 
-  plot <- ggplot(wcr_by_county,
-                 aes(week1a, County, fill=value1)) + geom_tile() +
+  plot <- ggplot(
+    wcr_by_county,
+    aes(week1a, County, fill=value1)) + geom_tile() +
     scale_y_discrete(limits = rev) +
     scale_x_discrete(position="top") +
     labs(x=NULL, y=NULL,
-         subtitle="Weekly case rate per 10,000 people by county") +
+         subtitle="Weekly case rate per 10,000 people, by county") +
     scale_fill_brewer(name="cases per 10k") +
     facet_wrap(~panel, scales="free_y", nrow=1) +
     theme(
@@ -224,6 +235,7 @@ rate_per_county_graph <- function(num_panels=2) {
       # https://stackoverflow.com/a/10547999
       strip.background = element_blank(),
       strip.text.x = element_blank(),
+      axis.text=element_text(size = rel(0.65)),
       legend.position="bottom"
     )
   plot
