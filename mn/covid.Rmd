@@ -1,12 +1,8 @@
 ---
-title: "Minnesota Covid 19 data"
-date: "`r format(Sys.time(), '%B %d, %Y')`"
+# title: "Minnesota Covid 19 data"
+# date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: pdf_document
 ---
-
-# Introduction
-
-What is the trend in Covid-19 cases in Minnesota?
 
 # `r format(Sys.time(), '%B %e, %Y')`
 
@@ -191,6 +187,46 @@ hospcapdata_graph <- function() {
       scale_size_identity()
   }
   p
+}
+```
+
+```{r per_county_graph}
+rate_per_county_graph <- function(num_panels=2) {
+  wcr_by_county <- read_csv('data/wcrmap.csv') %>%
+    mutate(panel = floor((row_number()-1) / 88 * num_panels)) %>%
+    pivot_longer(starts_with('Week'), names_to='week') %>%
+    mutate(week1 = gsub("Week \\d+: ", "", week),
+           week1a = gsub("-", "-\n", week1),
+#           value1 = cut(value, c(0,5,10,15,25,50,75,100,Inf)),
+           value1 = cut(value, c(0,10,25,50,75,Inf)),
+           value1 = factor(if_else(value == 0, "0",
+                                   as.character(value1)),
+                           levels=c("0",levels(value1))))
+
+  levels(wcr_by_county$value1) <-
+    c("0", ">0 to <10", "10 to <25", "25 to <50",
+      '50 to <75', '>=75')
+
+  # levels(wcr_by_county$value1) <-
+  #   c("0", ">0 to <5", "5 to <10", "10 to <15", "15 to <25", "25 to <50",
+  #     '50 to <75', '75 to <100', ">=100")
+
+  plot <- ggplot(wcr_by_county,
+                 aes(week1a, County, fill=value1)) + geom_tile() +
+    scale_y_discrete(limits = rev) +
+    scale_x_discrete(position="top") +
+    labs(x=NULL, y=NULL,
+         subtitle="Weekly case rate per 10,000 people by county") +
+    scale_fill_brewer(name="cases per 10k") +
+    facet_wrap(~panel, scales="free_y", nrow=1) +
+    theme(
+      # remove facet_wrap headers
+      # https://stackoverflow.com/a/10547999
+      strip.background = element_blank(),
+      strip.text.x = element_blank(),
+      legend.position="bottom"
+    )
+  plot
 }
 ```
 
@@ -381,19 +417,22 @@ labdata$alpha <- c(rep(0.25, nrow(labdata)-7), rep(the_alpha, 7))
 labdataf <- labdata %>% filter(date >= first_day)
 labdataf1 <- head(labdataf, -7)
 change_in_daily_tests_rolling_l <- change_in_percent(labdataf1$daily_tests_rolling, CHANGE_WINDOW)
-ggplot(labdataf, aes(date, daily_tests)) +
-  geom_point(aes(alpha=alpha)) +
-  geom_line(data=labdataf, aes(alpha=alpha)) +
-  geom_line(data=labdataf1, aes(y=daily_tests_rolling), size=1) +
-  labs(title="Daily tests (PCR+antigen)",
-       subtitle=paste0(
-         "average ", round(tail(labdataf1$daily_tests_rolling, 1)),
-         ", 14-day change ",
-         change_in_daily_tests_rolling_l$str, ".",
-         "  Last 7 days may have incomplete data.")) +
-  scale_y_continuous(limits=c(0,NA)) +
-  scale_alpha_identity() +
-  scale_x_date(date_minor_breaks="1 month")
+if (FALSE) {
+  # test plot
+  ggplot(labdataf, aes(date, daily_tests)) +
+    geom_point(aes(alpha=alpha)) +
+    geom_line(data=labdataf, aes(alpha=alpha)) +
+    geom_line(data=labdataf1, aes(y=daily_tests_rolling), size=1) +
+    labs(title="Daily tests (PCR+antigen)",
+         subtitle=paste0(
+           "average ", round(tail(labdataf1$daily_tests_rolling, 1)),
+           ", 14-day change ",
+           change_in_daily_tests_rolling_l$str, ".",
+           "  Last 7 days may have incomplete data.")) +
+    scale_y_continuous(limits=c(0,NA)) +
+    scale_alpha_identity() +
+    scale_x_date(date_minor_breaks="1 month")
+}
 
 ############ positive test rate
 caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
@@ -420,11 +459,14 @@ ggplot(caselabdata %>% filter(date >= first_day),
   geom_hline(yintercept=0.05, linetype='dashed') +
   scale_x_date(date_minor_breaks="1 month")
 
-
 if (FALSE) {
   hospcapdata_graph()
   days_on_hand_graph()
 }
+```
+
+```{r case_rate_by_county, fig.height=5}
+rate_per_county_graph()
 ```
 
 Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html
@@ -477,3 +519,6 @@ From the 14-day changes using confirmed data (all delayed 7 days except for deat
 - positive test rate (unofficial): **`r sprintf("%+.1f%%", 100*latest_pos_rate_rolling)`** (>=5%),
  **up** `r sprintf("%+.1f%%", change_in_pos_rate_l$delta)`
 
+# Introduction
+
+What is the trend in Covid-19 cases in Minnesota?
