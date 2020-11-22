@@ -191,7 +191,7 @@ hospcapdata_graph <- function() {
 ```
 
 ```{r per_county_graph}
-rate_per_county_graph <- function(num_panels=2) {
+rate_per_county_graph <- function(num_panels=4) {
   wcr_by_county_raw <- read_csv('data/wcrmap.csv')
   wcr_by_county <- wcr_by_county_raw %>%
     mutate(panel = floor((row_number()-1) / 88 * num_panels)) %>%
@@ -211,6 +211,12 @@ rate_per_county_graph <- function(num_panels=2) {
       # but that seems like a good bet to me
       week1a = factor(week1a, levels=unique(week1a))
     )
+  # week_key_str: key for week numbers
+  # collapse all the weeks
+  # then remove all the "Week", but add one back
+  week_key_str <- paste(unique(wcr_by_county$week), collapse="; ")
+  week_key_str <- paste0("Weeks: ",
+                         gsub(":", " is", gsub("Week ", "", week_key_str)))
 
   # rate level names:
   levels(wcr_by_county$value1) <-
@@ -223,11 +229,13 @@ rate_per_county_graph <- function(num_panels=2) {
 
   plot <- ggplot(
     wcr_by_county,
-    aes(week1a, County, fill=value1)) + geom_tile() +
+    aes(week1b, County, fill=value1)) +
+    geom_tile() +
     scale_y_discrete(limits = rev) +
     scale_x_discrete(position="top") +
     labs(x=NULL, y=NULL,
-         subtitle="Weekly case rate per 10,000 people, by county") +
+         subtitle=paste0("Weekly case rate per 10,000 people, by county\n",
+                         week_key_str)) +
     scale_fill_brewer(name="cases per 10k") +
     facet_wrap(~panel, scales="free_y", nrow=1) +
     theme(
@@ -236,7 +244,8 @@ rate_per_county_graph <- function(num_panels=2) {
       strip.background = element_blank(),
       strip.text.x = element_blank(),
       axis.text=element_text(size = rel(0.65)),
-      legend.position="bottom"
+      legend.position="bottom",
+      plot.subtitle=element_text(size = rel(0.8))
     )
   plot
 }
@@ -477,7 +486,7 @@ if (FALSE) {
 }
 ```
 
-```{r case_rate_by_county, fig.height=5}
+```{r case_rate_by_county, fig.height=3.25}
 rate_per_county_graph()
 ```
 
