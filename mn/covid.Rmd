@@ -2,6 +2,8 @@
 # title: "Minnesota Covid 19 data"
 # date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: pdf_document
+# https://stackoverflow.com/a/13516042
+geometry: margin=1cm
 ---
 
 # `r format(Sys.time(), '%B %e, %Y')`
@@ -486,14 +488,11 @@ if (FALSE) {
 }
 ```
 
-```{r case_rate_by_county, fig.height=3.25}
+```{r case_rate_by_county, fig.height=3.25, fig.width=8}
 rate_per_county_graph()
 ```
 
-Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html
-and https://mn.gov/covid19/data/response-prep/response-capacity.jsp.
-
-Capacity csv is at https://mn.gov/covid19/assets/HospitalCapacity_HistoricCSV_tcm1148-449110.csv.
+\newpage
 
 ## Latest data dates
 
@@ -513,6 +512,15 @@ dates <- rbind(dates,
 
 kable(dates)
 ```
+
+# Introduction
+
+What is the trend in Covid-19 cases in Minnesota?
+
+Data from https://www.health.state.mn.us/diseases/coronavirus/situation.html
+and https://mn.gov/covid19/data/response-prep/response-capacity.jsp.
+
+Capacity csv is at https://mn.gov/covid19/assets/HospitalCapacity_HistoricCSV_tcm1148-449110.csv.
 
 ## Paragraph summary
 
@@ -539,7 +547,3 @@ From the 14-day changes using confirmed data (all delayed 7 days except for deat
 
 - positive test rate (unofficial): **`r sprintf("%+.1f%%", 100*latest_pos_rate_rolling)`** (>=5%),
  **up** `r sprintf("%+.1f%%", change_in_pos_rate_l$delta)`
-
-# Introduction
-
-What is the trend in Covid-19 cases in Minnesota?
