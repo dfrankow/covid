@@ -249,7 +249,12 @@ rate_per_county_graph <- function(num_panels=4) {
       legend.position="bottom",
       plot.subtitle=element_text(size = rel(0.8))
     )
-  plot
+
+  latest_week1b <- max(wcr_by_county$week1b)
+  value1_summ <- wcr_by_county %>% filter(week1b == latest_week1b) %>%
+    group_by(value1) %>% tally() %>% arrange(desc(value1)) %>%
+    mutate(perc = 100 * n / sum(n), cum_perc = 100 * cumsum(n) / sum(n))
+  return(list(plot=plot, rate_hist=value1_summ))
 }
 ```
 
@@ -366,7 +371,7 @@ ggplot(deathdata %>% filter(date >= first_day),
   geom_line(aes(y=daily_deaths), alpha=0.25) +
   labs(title="Daily deaths",
        subtitle=paste0(
-         "average ", latest_daily_deaths,
+         "average ", latest_daily_deaths_rolling,
          ", 14-day change ",
          change_in_daily_deaths_rolling_l$str)) +
   scale_y_continuous(limits=c(0,NA)) +
@@ -489,7 +494,8 @@ if (FALSE) {
 ```
 
 ```{r case_rate_by_county, fig.height=3.25, fig.width=8}
-rate_per_county_graph()
+rate_per_county_result <- rate_per_county_graph()
+rate_per_county_result$plot
 ```
 
 \newpage
@@ -547,3 +553,9 @@ From the 14-day changes using confirmed data (all delayed 7 days except for deat
 
 - positive test rate (unofficial): **`r sprintf("%+.1f%%", 100*latest_pos_rate_rolling)`** (>=5%),
  **up** `r sprintf("%+.1f%%", change_in_pos_rate_l$delta)`
+
+## Per county summary
+
+```{r per_county_summ}
+kable(rate_per_county_result$rate_hist)
+```
