@@ -202,11 +202,9 @@ rate_per_county_graph <- function(num_panels=4) {
            week1a = gsub("-", "-\n", week1),
            # week1b is "41, "42", "43", ..
            week1b = gsub("Week (\\d+):.+", "\\1", week),
-#           value1 = cut(value, c(0,5,10,15,25,50,75,100,Inf)),
-           value1 = cut(value, c(0,10,25,50,75,Inf)),
-           value1 = factor(if_else(value == 0, "0",
-                                   as.character(value1)),
-                           levels=c("0",levels(value1)))) %>%
+#           value1 = cut(value, c(-1,0,10,25,50,75,100,125,150,Inf), ordered_result = T),
+           value1 = cut(value, c(-1,0,10,25,50,75,Inf), ordered_result = T),
+    ) %>%
     mutate(
       # level week1a by its occurrence in wcr_by_county
       # this relies on the weeks being in order after pivot_longer,
@@ -226,8 +224,8 @@ rate_per_county_graph <- function(num_panels=4) {
       '50 to <75', '>=75')
 
   # levels(wcr_by_county$value1) <-
-  #   c("0", ">0 to <5", "5 to <10", "10 to <15", "15 to <25", "25 to <50",
-  #     '50 to <75', '75 to <100', ">=100")
+  #   c("0", ">0 to <10", "10 to <25", "25 to <50",
+  #     '50 to <75', '75 to <100', '100 to <125', '125 to <150', ">=150")
 
   plot <- ggplot(
     wcr_by_county,
