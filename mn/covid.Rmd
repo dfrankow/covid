@@ -251,10 +251,14 @@ rate_per_county_graph <- function(num_panels=4) {
     )
 
   latest_week1b <- max(wcr_by_county$week1b)
-  value1_summ <- wcr_by_county %>% filter(week1b == latest_week1b) %>%
+  wcr_by_county_latest <- wcr_by_county %>% filter(week1b == latest_week1b)
+  value1_summ <- wcr_by_county_latest %>%
     group_by(value1) %>% tally() %>% arrange(desc(value1)) %>%
     mutate(perc = 100 * n / sum(n), cum_perc = 100 * cumsum(n) / sum(n))
-  return(list(plot=plot, rate_hist=value1_summ))
+  return(list(plot=plot,
+              rate_hist=value1_summ,
+              wcr_by_county_latest=wcr_by_county_latest,
+              wcr_by_county=wcr_by_county))
 }
 ```
 
