@@ -203,7 +203,7 @@ rate_per_county_graph <- function(num_panels=4) {
            # week1b is "41, "42", "43", ..
            week1b = gsub("Week (\\d+):.+", "\\1", week),
 #           value1 = cut(value, c(-1,0,10,25,50,75,100,125,150,Inf), ordered_result = T),
-           value1 = cut(value, c(-1,0,10,25,50,75,Inf), ordered_result = T),
+           value1 = cut(value, c(-1,0,10,25,50,75,Inf), ordered_result = T)
     ) %>%
     mutate(
       # level week1a by its occurrence in wcr_by_county
