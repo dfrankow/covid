@@ -1,0 +1,10 @@
+# See https://docs.github.com/en/free-pro-team@latest/github/administering-a-repository/enabling-and-disabling-version-updates
+
+version: 2
+
+updates:
+- package-ecosystem: "pip"
+    # Look for `build.gradle` in the `root` directory
+    directory: "mn/"
+    schedule:
+      interval: "weekly"
