@@ -39,7 +39,12 @@ add_rolling_num <- function(df, col, window_days, suffix="_rolling") {
   c_col <- paste0('c_', col)
   df[[c_col]][!is.na(df[[col]])] <- cumsum(df[[col]][!is.na(df[[col]])])
   col1 <- paste0(col, suffix)
-  df[[col1]] <- (df[[c_col]] - lag(df[[c_col]], window_days)) / window_days
+  df[[col1]] <- (
+    df[[c_col]] - 
+      # if lag of window_days is NA, pick the day before
+      # let's hope there are not two NAs in a row
+      coalesce(lag(df[[c_col]], window_days), lag(df[[c_col]], window_days+1))
+  ) / window_days
   df
 }
 
