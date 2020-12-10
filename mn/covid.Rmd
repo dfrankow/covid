@@ -61,7 +61,12 @@ add_rolling_num <- function(df, col, window_days, suffix="_rolling") {
 change_in_percent <- function(vec, window_days, round_n=0) {
   stopifnot(length(vec) >= window_days)
   last <- tail(vec, 1)
-  last_minus <- head(tail(vec, window_days+1), 1)
+  last_minus <- coalesce(
+    # data from window_days back:
+    head(tail(vec, window_days+1), 1),
+    # data from window_days-1 back (in case window_days back is NA)
+    head(tail(vec, window_days+0), 1),
+  )
   delta <- (last - last_minus)
   fmt <- paste0("%+.", round_n, "f (%+.", round_n, "f%%)")
   list(delta=delta, percent=100*delta/last_minus,
