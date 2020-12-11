@@ -554,13 +554,7 @@ kable(rate_per_county_result$rate_hist)
 
 ## More plots
 
-```{r more_plots, fig.show = "hold", out.width = "50%"}
-
-if (TRUE) {
-  hospcapdata_graph()
-  days_on_hand_graph()
-}
-
+```{r tests_plot}
 # test plot
 ggplot(labdataf, aes(date, daily_tests)) +
   geom_point(aes(alpha=alpha)) +
@@ -575,4 +569,14 @@ ggplot(labdataf, aes(date, daily_tests)) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
   scale_x_date(date_minor_breaks="1 month")
+```
+
+```{r hospcap_plot}
+# doesn't seem useful:
+# hospcapdata_graph()
+```
+
+```{r days_on_hand_plot}
+# doesn't seem useful:
+# days_on_hand_graph()
 ```
