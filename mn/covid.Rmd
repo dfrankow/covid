@@ -224,8 +224,8 @@ rate_per_county_graph <- function(num_panels=4) {
   # week_key_str: key for week numbers
   # collapse all the weeks
   # then remove all the "Week", but add one back
-  week_key_str <- paste(unique(wcr_by_county$week), collapse="; ")
-  week_key_str <- paste0("Week numbers: ",
+  week_key_str <- paste(unique(wcr_by_county$week), collapse=";       ")
+  week_key_str <- paste0("Week numbers:       ",
                          gsub(":", " is", gsub("Week ", "", week_key_str)))
 
   # rate level names:
