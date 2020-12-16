@@ -590,11 +590,11 @@ options(scipen=10)
 
 - All daily admissions: currently at `r all_admits_peak$percent_peak_rolling`% of peak (`r round(all_admits_peak$max_rolling, 0)` people,  `r all_admits_peak$max_rolling_days` days ago)
 
-- Daily cases: currently at `r positive_cases_peak$percent_peak_rolling`% of peak (`r round(positive_cases_peak$max_rolling, 0)` people,  `r positive_cases_peak$max_rolling_days` days ago)
+- Daily cases: currently at `r positive_cases_peak$percent_peak_rolling`% of peak (`r round(positive_cases_peak$max_rolling, 0)` cases,  `r positive_cases_peak$max_rolling_days` days ago)
 
-- Daily tests: currently at `r daily_tests_peak$percent_peak_rolling`% of peak (`r round(daily_tests_peak$max_rolling, 0)` people,  `r daily_tests_peak$max_rolling_days` days ago)
+- Daily tests: currently at `r daily_tests_peak$percent_peak_rolling`% of peak (`r round(daily_tests_peak$max_rolling, 0)` tests,  `r daily_tests_peak$max_rolling_days` days ago)
 
-- Positive test rate: currently at `r positive_test_rate_peak$percent_peak_rolling`% of peak (`r round(positive_test_rate_peak$max_rolling, 0)` people,  `r positive_test_rate_peak$max_rolling_days` days ago)
+- Positive test rate: currently at `r positive_test_rate_peak$percent_peak_rolling`% of peak (`r round(100*positive_test_rate_peak$max_rolling, 1)`%,  `r positive_test_rate_peak$max_rolling_days` days ago)
 
 
 ## More plots
