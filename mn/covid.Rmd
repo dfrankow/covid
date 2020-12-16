@@ -519,14 +519,15 @@ and https://mn.gov/covid19/data/response-prep/response-capacity.jsp.
 
 Capacity csv is at https://mn.gov/covid19/assets/HospitalCapacity_HistoricCSV_tcm1148-449110.csv.
 
-## Paragraph summary
+## 14-DAY CHANGES
 
 ```{r read_latest_cases}
 dct <- read_tsv('data/dailycasetotal.tsv', col_names=c('label', 'num'))
 todays_cases <- dct %>% filter(label=="Newly reported cases") %>% pull(num)
 ```
 
-From the 14-day changes using confirmed data (all delayed 7 days except for deaths), the trends:
+
+Uses confirmed data (all delayed 7 days except for deaths).
 
 - hospital admissions: icu admits **up**
  `r sprintf("%+.0f%%", icu_admits_rolling_delta7_percent_l$percent)`,
@@ -551,7 +552,9 @@ From the 14-day changes using confirmed data (all delayed 7 days except for deat
 kable(rate_per_county_result$rate_hist)
 ```
 
-## Peak summary
+## PEAK SUMMARY
+
+How far are the 7-day rolling averages from the peak, in numbers and days?
 
 ```{r peak_vars}
 
