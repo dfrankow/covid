@@ -7,6 +7,7 @@ wget -O data/wcrmap.csv 'https://www.health.state.mn.us/diseases/coronavirus/sta
 # They detect bots, so I have to download by hand at the URL
 # wget -O data/HospitalCapacity_HistoricCSV_tcm1148-449110.csv https://mn.gov/covid19/assets/HospitalCapacity_HistoricCSV_tcm1148-449110.csv
 
+wget -O vaccine_admin.html https://www.health.state.mn.us/diseases/coronavirus/vaccine/stats/admin.html
 
 
 source ../.venv/bin/activate
@@ -21,3 +22,4 @@ the_date=`date +"%Y%m%d"`
 cp data/wcrmap.csv data/wcrmap.${the_date}.csv
 mv covid.pdf covid.${the_date}.pdf
 mv situation.html situation.html.${the_date}
+mv vaccine_admin.html vaccine_admin.html.${the_date}
