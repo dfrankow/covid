@@ -202,6 +202,48 @@ hospcapdata_graph <- function() {
 }
 ```
 
+```{r vaccine_plot}
+vaccine_plot <- function() {
+  library(lubridate)
+  vax <- read_tsv('data/adminvax.tsv') %>%
+    rename(week=`MMWR Week`,
+           num_administered=`Number of vaccines  administered`,
+           total_administered=`Total number of vaccines  administered`
+           ) %>%
+    separate(week, into=c('week', 'dates'), sep=": ") %>%
+    separate(dates, into=c('start_date', 'end_date'), sep='-') %>%
+    mutate(
+      start_date = parse_date(
+        ifelse(str_count(start_date, "/")==1,
+               paste0(start_date,"/20"), start_date),
+        "%m/%d/%y"),
+      end_date = parse_date(
+        ifelse(str_count(end_date, "/")==1,
+               paste0(end_date,"/20"), end_date),
+        "%m/%d/%y")
+    )
+  ggplot(vax, aes(start_date, num_administered)) +
+    geom_bar(stat="identity") +
+    scale_x_date(
+      breaks=vax$start_date,
+      labels=function(breaks) {
+        vax %>% inner_join(data.frame(start_date=breaks)) %>%
+          mutate(the_label=paste0(
+            format(start_date, "%b %e"),
+            " - ",
+            format(end_date, "%b %e")),
+            the_label=gsub("  ", " ", the_label)) %>%
+          pull(the_label)
+      }
+                 # date_labels="%b %e"
+                 ) +
+    labs(x="Week (so far)", y="# vaccines administered",
+         title="Vaccines administered",
+         subtitle="Includes current partial week")
+}
+```
+
+
 ```{r per_county_graph}
 rate_per_county_graph <- function(num_panels=4) {
   wcr_by_county_raw <- read_csv('data/wcrmap.csv')
@@ -458,6 +500,26 @@ labdataf <- labdata %>% filter(date >= first_day)
 labdataf1 <- head(labdataf, -7)
 change_in_daily_tests_rolling_l <- change_in_percent(labdataf1$daily_tests_rolling, CHANGE_WINDOW)
 
+############ tests plot
+tests_plot <- function() {
+  # test plot
+  ggplot(labdataf, aes(date, daily_tests)) +
+    geom_point(aes(alpha=alpha)) +
+    geom_line(data=labdataf, aes(alpha=alpha)) +
+    geom_line(data=labdataf1, aes(y=daily_tests_rolling), size=1) +
+    labs(title="Daily tests (PCR+antigen)",
+         subtitle=paste0(
+           "average ", round(tail(labdataf1$daily_tests_rolling, 1)),
+           ", 14-day change ",
+           change_in_daily_tests_rolling_l$str, ".",
+           "  Last 7 days may have incomplete data.")) +
+    scale_y_continuous(limits=c(0,NA)) +
+    scale_alpha_identity() +
+    scale_x_date(date_minor_breaks="1 month")
+}
+tests_plot()
+
+
 ############ positive test rate
 caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
   mutate(positive_rate7 = positive_cases_rolling / daily_tests_rolling)
@@ -482,6 +544,8 @@ ggplot(caselabdata %>% filter(date >= first_day),
   scale_alpha_identity() +
   geom_hline(yintercept=0.05, linetype='dashed') +
   scale_x_date(date_minor_breaks="1 month")
+
+vaccine_plot()
 ```
 
 ```{r case_rate_by_county, fig.height=3.25, fig.width=8}
@@ -601,23 +665,6 @@ options(scipen=10)
 
 
 ## More plots
-
-```{r tests_plot}
-# test plot
-ggplot(labdataf, aes(date, daily_tests)) +
-  geom_point(aes(alpha=alpha)) +
-  geom_line(data=labdataf, aes(alpha=alpha)) +
-  geom_line(data=labdataf1, aes(y=daily_tests_rolling), size=1) +
-  labs(title="Daily tests (PCR+antigen)",
-       subtitle=paste0(
-         "average ", round(tail(labdataf1$daily_tests_rolling, 1)),
-         ", 14-day change ",
-         change_in_daily_tests_rolling_l$str, ".",
-         "  Last 7 days may have incomplete data.")) +
-  scale_y_continuous(limits=c(0,NA)) +
-  scale_alpha_identity() +
-  scale_x_date(date_minor_breaks="1 month")
-```
 
 ```{r hospcap_plot}
 # doesn't seem useful:
