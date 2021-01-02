@@ -409,11 +409,15 @@ deathdata <- read_tsv('data/deathtable.tsv')
 names(deathdata) <- c('date', 'daily_deaths', 'cumulative_deaths')
 deathdata <- deathdata %>%
   mutate(
-    date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+    the_year = ifelse(row_number() <= 286, "2020", "2021"),
+    date = as.Date(paste0(the_year, "/", date), format="%Y/%m/%d"),
+    gt_prev_date = date > lag(date),
     # july 4 had "-" in the data
     daily_deaths = as.numeric(daily_deaths)
   ) %>%
   add_rolling_num('daily_deaths', ROLLING_WINDOW)
+# we got the year right:
+stopifnot(deathdata$gt_prev_date %in% c(TRUE, NA))
 
 change_in_daily_deaths_rolling_l <- change_in_percent(deathdata$daily_deaths_rolling, CHANGE_WINDOW)
 latest_daily_deaths_rolling <- round(tail(deathdata$daily_deaths_rolling, 1))
