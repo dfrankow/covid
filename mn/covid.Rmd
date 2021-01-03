@@ -331,11 +331,15 @@ hospdata <- read_tsv('data/hosptable.tsv')
 names(hospdata) <- c('date', 'icu_admits', 'all_admits',
                     'total_hosp', 'total_icu_hosp')
 hospdata <- hospdata %>% mutate(
-  date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+  # Get the year right:
+  the_year = ifelse(row_number() <= 302, "2020", "2021"),
+  date = as.Date(paste0(the_year, "/", date), format="%Y/%m/%d"),
+  gt_prev_date = date > lag(date),
   # july 4 had "-" in the data
   icu_admits = as.numeric(icu_admits),
   all_admits = as.numeric(all_admits)
 )
+stopifnot(hospdata$gt_prev_date %in% c(TRUE, NA))
 
 # Weird data on Oct 3, 2020, where Oct 2 and 3 had a bunch of zeros
 # last_day <- hospdata %>% filter(all_admits > 0) %>% pull(date) %>% max(na.rm=T)
@@ -448,10 +452,14 @@ names(casedata) <- c(
   'cumulative_positive_cases')
 casedata <- casedata %>%
   mutate(
-    date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+    # Get the year right:
+    the_year = ifelse(row_number() <= 302, "2020", "2021"),
+    date = as.Date(paste0(the_year, "/", date), format="%Y/%m/%d"),
+    gt_prev_date = date > lag(date),
     positive_cases = cumulative_positive_cases - lag(cumulative_positive_cases)
   ) %>%
   add_rolling_num('positive_cases', ROLLING_WINDOW)
+stopifnot(casedata$gt_prev_date %in% c(TRUE, NA))
 
 # make alpha of last 7 days less
 the_alpha <- 0.1
@@ -488,7 +496,10 @@ names(labdata) <- c(
   'cumulative_tests_antigen',
   'total_cumulative_tests')
 labdata <- labdata %>% mutate(
-  date = as.Date(paste0("2020/", date), format="%Y/%m/%d"),
+  # Get the year right:
+  the_year = ifelse(row_number() <= 279, "2020", "2021"),
+  date = as.Date(paste0(the_year, "/", date), format="%Y/%m/%d"),
+  gt_prev_date = date > lag(date),
   # commas throw things off
   total_cumulative_tests = as.integer(gsub(",", "", total_cumulative_tests)),
   daily_tests = total_cumulative_tests - lag(total_cumulative_tests),
@@ -496,6 +507,7 @@ labdata <- labdata %>% mutate(
   daily_tests_pcr = cumulative_tests_pcr - lag(cumulative_tests_pcr)
 ) %>%
   add_rolling_num('daily_tests', ROLLING_WINDOW)
+stopifnot(labdata$gt_prev_date %in% c(TRUE, NA))
 
 
 # make alpha of last 7 days less
