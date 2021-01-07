@@ -213,15 +213,17 @@ vaccine_plot <- function() {
     separate(week, into=c('week', 'dates'), sep=": ") %>%
     separate(dates, into=c('start_date', 'end_date'), sep='-') %>%
     mutate(
+      the_year = ifelse(row_number() <= 3, "20", "21"),
       start_date = parse_date(
         ifelse(str_count(start_date, "/")==1,
-               paste0(start_date,"/20"), start_date),
+               paste0(start_date,"/", the_year), start_date),
         "%m/%d/%y"),
       end_date = parse_date(
         ifelse(str_count(end_date, "/")==1,
-               paste0(end_date,"/20"), end_date),
+               paste0(end_date,"/", the_year), end_date),
         "%m/%d/%y")
     )
+  vax_this_week <- vax %>% filter(!is.na(start_date)) %>% tail(1)
   ggplot(vax, aes(start_date, num_administered)) +
     geom_bar(stat="identity") +
     scale_x_date(
@@ -239,7 +241,10 @@ vaccine_plot <- function() {
                  ) +
     labs(x="Week (so far)", y="# vaccines administered",
          title="Vaccines administered",
-         subtitle="Includes current partial week")
+         subtitle=paste0(
+           vax_this_week$num_administered, " this week, ",
+           vax_this_week$total_administered, " total so far.",
+           " Includes current partial week."))
 }
 ```
 
