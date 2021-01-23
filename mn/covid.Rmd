@@ -224,7 +224,7 @@ vaccine_plot <- function() {
         vax %>% inner_join(data.frame(start_date=breaks)) %>%
           mutate(the_label=paste0(
             format(start_date, "%b %e"),
-            " - ",
+            "-\n",
             format(end_date, "%b %e")),
             the_label=gsub("  ", " ", the_label)) %>%
           pull(the_label)

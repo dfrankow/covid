@@ -29,4 +29,4 @@ cp data/wcrmap.csv data/wcrmap.${the_date}.csv
 # cp data/vaxadminbyweek.csv data/vaxadminbyweek.${the_date}.csv
 mv covid.pdf covid.${the_date}.pdf
 mv situation.html situation.html.${the_date}
-mv vaccine_admin.html vaccine_admin.html.${the_date}
+# mv vaccine_admin.html vaccine_admin.html.${the_date}
