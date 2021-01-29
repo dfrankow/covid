@@ -249,6 +249,7 @@ rate_per_county_graph <- function(num_panels=4) {
     pivot_longer(starts_with('Week'), names_to='week') %>%
     mutate(week1 = gsub("Week \\d+: ", "", week),
            week1a = gsub("-", "-\n", week1),
+           week1a_start = parse_date_time(gsub("-.+", "", week1), orders=c("mdy")),
            # week1b is "41, "42", "43", ..
            week1b = gsub("Week (\\d+):.+", "\\1", week),
 #           value1 = cut(value, c(-1,0,10,25,50,75,100,125,150,Inf), ordered_result = T),
@@ -258,13 +259,14 @@ rate_per_county_graph <- function(num_panels=4) {
       # level week1a by its occurrence in wcr_by_county
       # this relies on the weeks being in order after pivot_longer,
       # but that seems like a good bet to me
-      week1a = factor(week1a, levels=unique(week1a))
+      week1a = factor(week1a, levels=unique(week1a)),
+      week1b = factor(week1b, levels=unique(week1b), ordered=T)
     )
   # week_key_str: key for week numbers
   # collapse all the weeks
   # then remove all the "Week", but add one back
-  week_key_str <- paste(unique(wcr_by_county$week), collapse=";       ")
-  week_key_str <- paste0("Week numbers:       ",
+  week_key_str <- paste(unique(wcr_by_county$week), collapse="; ")
+  week_key_str <- paste0("Week numbers: ",
                          gsub(":", " is", gsub("Week ", "", week_key_str)))
 
   # rate level names:
