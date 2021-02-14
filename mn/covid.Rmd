@@ -337,7 +337,11 @@ hospdata <- hospdata %>% mutate(
   # july 4 had "-" in the data
   icu_admits = as.numeric(icu_admits),
   all_admits = as.numeric(all_admits)
-)
+) %>%
+  # remove ill-formatted date like "unknown" that drops in at the end
+  filter(!is.na(date))
+
+# check we parsed the date correctly
 stopifnot(hospdata$gt_prev_date %in% c(TRUE, NA))
 
 # Weird data on Oct 3, 2020, where Oct 2 and 3 had a bunch of zeros
@@ -457,6 +461,8 @@ casedata <- casedata %>%
     gt_prev_date = date > lag(date),
     positive_cases = cumulative_positive_cases - lag(cumulative_positive_cases)
   ) %>%
+  # ditch the date that can't be parsed
+  filter(!is.na(date)) %>%
   add_rolling_num('positive_cases', ROLLING_WINDOW)
 stopifnot(casedata$gt_prev_date %in% c(TRUE, NA))
 
@@ -642,23 +648,25 @@ peak_list <- function(rolling_vec, date_vec) {
   max_rolling <- rolling_vec[idx]
   #max_rolling_date <- date_vec[idx]
   max_rolling_days <- as.numeric(Sys.Date() - date_vec[idx], unit="days")
-  percent_peak_rolling <- round(100 * tail(rolling_vec, 1) / max_rolling, 0)
+  last_val <- tail(rolling_vec, 1)
+  percent_peak_rolling <- round(100 * last_val / max_rolling, 0)
   return(list(
     max_rolling=max_rolling,
     max_rolling_days=max_rolling_days,
-    percent_peak_rolling=percent_peak_rolling
+    percent_peak_rolling=percent_peak_rolling,
+    last_val=last_val
   ))
 }
 
-icu_admits_peak <- peak_list(hospdataf1$icu_admits_rolling, hospdataf1$date)
+icu_admits_peak <- peak_list(hospdata$icu_admits_rolling, hospdataf1$date)
 
-all_admits_peak <- peak_list(hospdataf1$all_admits_rolling, hospdataf1$date)
+all_admits_peak <- peak_list(hospdata$all_admits_rolling, hospdataf1$date)
 
 daily_deaths_peak <- peak_list(deathdata$daily_deaths_rolling, deathdata$date)
 
 positive_cases_peak <- peak_list(casedataf1$positive_cases_rolling, casedataf1$date)
 
-daily_tests_peak <- peak_list(labdataf$daily_tests_rolling, labdataf1$date)
+daily_tests_peak <- peak_list(labdataf1$daily_tests_rolling, labdataf1$date)
 
 positive_test_rate_peak <- peak_list(caselabdataf$positive_rate7, caselabdataf$date)
 
