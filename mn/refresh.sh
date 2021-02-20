@@ -7,9 +7,6 @@ wget -O data/wcrmap.csv 'https://www.health.state.mn.us/diseases/coronavirus/sta
 # They detect bots, so I have to download by hand at the URL
 # wget -O data/vaxadminbyweek.csv https://mn.gov/covid19/assets/Doses%20Administered%20By%20Week_tcm1148-462844.csv
 
-# newer page, not scrapable
-# https://mn.gov/covid19/vaccine/data/index.jsp
-
 
 source ../.venv/bin/activate
 cat situation.html | parse_html_tables.py

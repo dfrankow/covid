@@ -216,7 +216,7 @@ vaccine_plot <- function() {
     ) %>%
     filter(!is.na(start_date))
   vax_this_week <- vax %>% tail(1)
-  ggplot(vax, aes(start_date, num_administered)) +
+  p<-ggplot(vax, aes(start_date, num_administered)) +
     geom_bar(stat="identity") +
     scale_x_date(
       breaks=vax$start_date,
@@ -231,12 +231,14 @@ vaccine_plot <- function() {
       }
                  # date_labels="%b %e"
                  ) +
-    labs(x="Week (so far)", y="# vaccines administered",
+    scale_y_continuous(labels=comma) +
+    labs(x="Week (so far)", y="# doses administered",
          title="Vaccines administered",
          subtitle=paste0(
            vax_this_week$num_administered, " in the latest week, ",
            vax_this_week$total_administered, " total so far.",
            " Includes current partial week."))
+  return(list(plot=p, data=vax))
 }
 ```
 
@@ -566,7 +568,8 @@ ggplot(caselabdata %>% filter(date >= first_day),
   geom_hline(yintercept=0.05, linetype='dashed') +
   scale_x_date(date_minor_breaks="1 month")
 
-vaccine_plot()
+vacc_result <- vaccine_plot()
+vacc_result$plot
 ```
 
 ```{r case_rate_by_county, fig.height=3.25, fig.width=8}
@@ -697,4 +700,9 @@ options(scipen=10)
 ```{r days_on_hand_plot}
 # doesn't seem useful:
 # days_on_hand_graph()
+```
+
+```{r vaccine_doses_per_day}
+# vacc_data_daily <- read_tsv('data/vaccinated.tsv') %>%
+#   mutate(total_doses_daily = total_doses - lag(total_doses))
 ```
