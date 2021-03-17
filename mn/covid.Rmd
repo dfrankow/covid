@@ -219,17 +219,14 @@ vaccine_plot <- function() {
   p<-ggplot(vax, aes(start_date, num_administered)) +
     geom_bar(stat="identity") +
     scale_x_date(
-      breaks=vax$start_date,
-      labels=function(breaks) {
-        vax %>% inner_join(data.frame(start_date=breaks)) %>%
-          mutate(the_label=paste0(
-            format(start_date, "%b %e"),
-            "-\n",
-            format(end_date, "%b %e")),
-            the_label=gsub("  ", " ", the_label)) %>%
-          pull(the_label)
-      }
-                 # date_labels="%b %e"
+      # breaks=vax$start_date,
+      # labels=function(breaks) {
+      #   vax %>% inner_join(data.frame(start_date=breaks)) %>%
+      #     mutate(the_label=format(start_date, "%b %e"),
+      #       the_label=gsub("  ", " ", the_label)) %>%
+      #     pull(the_label)
+      # }
+                 date_labels="%b %e"
                  ) +
     scale_y_continuous(labels=comma) +
     labs(x="Week (so far)", y="# doses administered",
@@ -238,6 +235,8 @@ vaccine_plot <- function() {
            vax_this_week$num_administered, " in the latest week, ",
            vax_this_week$total_administered, " total so far.",
            " Includes current partial week."))
+  # + theme(axis.text.x = element_text(angle = 10))
+
   return(list(plot=p, data=vax))
 }
 ```
@@ -415,6 +414,10 @@ ggplot(hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
 ########## deaths
 
 deathdata <- read_tsv('data/deathtable.tsv')
+
+# HACK(dan): Act like there were 2 deaths reported on 3/9 instead of 140
+deathdata[deathdata$`Date reported` == "3/9/21",]$`Newly reported deaths` <- 2
+
 names(deathdata) <- c('date', 'daily_deaths', 'cumulative_deaths')
 deathdata <- deathdata %>%
   mutate(
@@ -436,11 +439,12 @@ ggplot(deathdata %>% filter(date >= first_day),
   geom_point(aes(y=daily_deaths), alpha=0.25) +
   geom_line(aes(y=daily_deaths_rolling), size=1) +
   geom_line(aes(y=daily_deaths), alpha=0.25) +
-  labs(title="Daily deaths",
+  labs(title="Daily deaths **",
        subtitle=paste0(
          "average ", latest_daily_deaths_rolling,
          ", 14-day change ",
-         change_in_daily_deaths_rolling_l$str)) +
+         change_in_daily_deaths_rolling_l$str,
+         "\n** As if March 9 had 2 deaths reported.")) +
   scale_y_continuous(limits=c(0,NA)) +
   scale_alpha_identity() +
   scale_x_date(date_minor_breaks="1 month")
