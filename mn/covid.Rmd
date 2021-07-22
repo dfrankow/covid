@@ -359,8 +359,11 @@ last_day <- max(hospdata$date, na.rm=T)
 # first_day <- last_day - 28*3
 # last 16 weeks
 # first_day <- last_day - 28*4
+# last 20 weeks
+# first_day <- last_day - 28*5
 # last 365 days
- first_day <- last_day - 365
+# first_day <- last_day - 365
+first_day <- as.Date('2021-03-01')
 
 # hospdata <- hospdata %>% filter(date <= last_day)
 
@@ -436,23 +439,27 @@ deathdata <- deathdata %>%
 # we got the year right:
 stopifnot(deathdata$gt_prev_date %in% c(TRUE, NA))
 
-deathdataf1 <- head(deathdata,-7)
+# Make alpha of the last 7 days different
+the_alpha <- 0.1
+deathdata$alpha <- c(rep(0.25, nrow(deathdata)-7), rep(the_alpha, 7))
 
+deathdataf <- deathdata %>% filter(date >= first_day)
+deathdataf1 <- head(deathdataf,-7)
 
 change_in_daily_deaths_rolling_l <- change_in_percent(deathdataf1$daily_deaths_rolling, CHANGE_WINDOW)
 latest_daily_deaths_rolling <- round(tail(deathdataf1$daily_deaths_rolling, 1))
 latest_daily_deaths <- tail(deathdataf1$daily_deaths, 1)
 ggplot(deathdata %>% filter(date >= first_day),
        aes(date, daily_deaths)) +
-  geom_point(aes(y=daily_deaths), alpha=0.25) +
-  geom_line(aes(y=daily_deaths_rolling), size=1) +
-  geom_line(aes(y=daily_deaths), alpha=0.25) +
+  geom_point(aes(y=daily_deaths, alpha=alpha)) +
+  geom_line(data=deathdataf1, aes(y=daily_deaths_rolling), size=1) +
+  geom_line(aes(y=daily_deaths, alpha=alpha)) +
   labs(title="Daily deaths",
        subtitle=paste0(
          "average ", latest_daily_deaths_rolling,
          ", 14-day change ",
          change_in_daily_deaths_rolling_l$str,
-         ".  Last few days may have incomplete data."
+         ".  Last several days may have incomplete data."
          # "\n** As if March 9 had 2 deaths reported."
          )) +
   scale_y_continuous(limits=c(0,NA)) +
@@ -483,7 +490,6 @@ casedata <- casedata %>%
 stopifnot(casedata$gt_prev_date %in% c(TRUE, NA))
 
 # make alpha of last 7 days less
-the_alpha <- 0.1
 casedata$alpha <- c(rep(0.25, nrow(casedata)-7), rep(the_alpha, 7))
 casedataf <- casedata %>% filter(date >= first_day)
 casedataf1 <- head(casedataf,-7)
