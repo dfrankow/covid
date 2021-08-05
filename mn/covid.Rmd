@@ -397,7 +397,8 @@ ggplot(hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
   geom_point(alpha=0.25) +
   geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits_rolling', 'all_admits_rolling')),
             aes(size=size, alpha=size)) +
-  geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
+  geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits'))
+            %>% filter(date >= first_day),
             aes(size=size, alpha=size)) +
   labs(title="Hospital admissions",
        subtitle=paste0(
@@ -443,7 +444,7 @@ stopifnot(deathdata$gt_prev_date %in% c(TRUE, NA))
 the_alpha <- 0.1
 deathdata$alpha <- c(rep(0.25, nrow(deathdata)-7), rep(the_alpha, 7))
 
-deathdataf <- deathdata %>% filter(date >= first_day)
+deathdataf <- deathdata # %>% filter(date >= first_day)
 deathdataf1 <- head(deathdataf,-7)
 
 change_in_daily_deaths_rolling_l <- change_in_percent(deathdataf1$daily_deaths_rolling, CHANGE_WINDOW)
@@ -452,7 +453,8 @@ latest_daily_deaths <- tail(deathdataf1$daily_deaths, 1)
 ggplot(deathdata %>% filter(date >= first_day),
        aes(date, daily_deaths)) +
   geom_point(aes(y=daily_deaths, alpha=alpha)) +
-  geom_line(data=deathdataf1, aes(y=daily_deaths_rolling), size=1) +
+  geom_line(data=deathdataf1 %>% filter(date >= first_day),
+            aes(y=daily_deaths_rolling), size=1) +
   geom_line(aes(y=daily_deaths, alpha=alpha)) +
   labs(title="Daily deaths",
        subtitle=paste0(
@@ -491,15 +493,16 @@ stopifnot(casedata$gt_prev_date %in% c(TRUE, NA))
 
 # make alpha of last 7 days less
 casedata$alpha <- c(rep(0.25, nrow(casedata)-7), rep(the_alpha, 7))
-casedataf <- casedata %>% filter(date >= first_day)
+casedataf <- casedata # %>% filter(date >= first_day)
 casedataf1 <- head(casedataf,-7)
 change_in_cases_rolling_l <- change_in_percent(casedataf1$positive_cases_rolling, CHANGE_WINDOW)
 latest_cases_rolling <- tail(casedataf1$positive_cases_rolling, 1)
-ggplot(casedataf,
+ggplot(casedataf %>% filter(date > first_day),
        aes(date, positive_cases)) +
   geom_point(aes(alpha=alpha)) +
   geom_line(aes(alpha=alpha)) +
-  geom_line(data=casedataf1, aes(y=positive_cases_rolling), size=1) +
+  geom_line(data=casedataf1 %>% filter(date >= first_day),
+            aes(y=positive_cases_rolling), size=1) +
   labs(title="Daily cases (PCR+antigen)",
        subtitle=paste0(
          "average ", round(tail(casedataf1$positive_cases_rolling, 1)),
@@ -539,17 +542,19 @@ stopifnot(labdata$gt_prev_date %in% c(TRUE, NA))
 
 # make alpha of last 7 days less
 labdata$alpha <- c(rep(0.25, nrow(labdata)-7), rep(the_alpha, 7))
-labdataf <- labdata %>% filter(date >= first_day)
+labdataf <- labdata # %>% filter(date >= first_day)
 labdataf1 <- head(labdataf, -7)
 change_in_daily_tests_rolling_l <- change_in_percent(labdataf1$daily_tests_rolling, CHANGE_WINDOW)
 
 ############ tests plot
 tests_plot <- function() {
   # test plot
-  ggplot(labdataf, aes(date, daily_tests)) +
+  ggplot(labdataf %>% filter(date >= first_day), aes(date, daily_tests)) +
     geom_point(aes(alpha=alpha)) +
-    geom_line(data=labdataf, aes(alpha=alpha)) +
-    geom_line(data=labdataf1, aes(y=daily_tests_rolling), size=1) +
+    geom_line(data=labdataf %>% filter(date >= first_day),
+              aes(alpha=alpha)) +
+    geom_line(data=labdataf1 %>% filter(date >= first_day),
+              aes(y=daily_tests_rolling), size=1) +
     labs(title="Daily tests (PCR+antigen)",
          subtitle=paste0(
            "average ", round(tail(labdataf1$daily_tests_rolling, 1)),
