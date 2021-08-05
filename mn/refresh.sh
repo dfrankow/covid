@@ -16,6 +16,7 @@ Rscript -e 'rmarkdown::render("covid.Rmd")'
 
 
 the_date=`date +"%Y%m%d"`
+# the_date='20210730'
 
 cp data/wcrmap.csv data/wcrmap.${the_date}.csv
 # cp data/vaxadminbyweek.csv data/vaxadminbyweek.${the_date}.csv
