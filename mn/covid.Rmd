@@ -220,7 +220,7 @@ vaccine_plot <- function() {
   vax_this_week <- vax %>% tail(1)
   p<-ggplot(vax, aes(start_date, num_administered)) +
     geom_bar(stat="identity") +
-    scale_x_date(
+    # scale_x_date(
       # breaks=vax$start_date,
       # labels=function(breaks) {
       #   vax %>% inner_join(data.frame(start_date=breaks)) %>%
@@ -228,9 +228,10 @@ vaccine_plot <- function() {
       #       the_label=gsub("  ", " ", the_label)) %>%
       #     pull(the_label)
       # }
-                 date_labels="%b %e"
-                 ) +
+      #           date_labels="%b %e"
+      #           ) +
     scale_y_continuous(labels=comma) +
+    scale_x_date(date_breaks="1 month", date_labels="%b") +
     labs(x="Week (so far)", y="# doses administered",
          title="Vaccines administered",
          subtitle=paste0(
