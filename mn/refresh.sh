@@ -10,7 +10,8 @@ wget -O data/wcrmap.csv 'https://www.health.state.mn.us/diseases/coronavirus/sta
 
 source ../.venv/bin/activate
 cat situation.html | parse_html_tables.py
-cat vaccine_admin.html | parse_html_tables.py
+# vaccine_admin.html hasn't been around for awhile
+# cat vaccine_admin.html | parse_html_tables.py
 mv *.tsv data
 Rscript -e 'rmarkdown::render("covid.Rmd")'
 
