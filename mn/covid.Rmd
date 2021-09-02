@@ -613,7 +613,7 @@ dates <- rbind(dates,
                hospdata_long %>% group_by(name) %>%
                  summarize(max_date=max(date)))
 dates <- rbind(dates,
-               data.frame(name="deaths", max_date=max(deathdata$date)))
+               data.frame(name="deaths", max_date=max(deathdata$date, na.rm=T)))
 dates <- rbind(dates,
                data.frame(name="cases", max_date=max(casedataf$date)))
 dates <- rbind(dates,
