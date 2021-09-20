@@ -30,3 +30,6 @@ mv vbt.html vbt.html.${the_date}
 # mv vaccine_admin.html vaccine_admin.html.${the_date}
 open covid.${the_date}.pdf
 # TODO: open emacs on data/vaccinated.tsv
+
+# the breakthrough table
+cat data/vaxbtoverview.tsv
