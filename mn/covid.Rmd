@@ -598,7 +598,7 @@ vacc_result <- vaccine_plot()
 vacc_result$plot
 ```
 
-```{r case_rate_by_county, fig.height=3.25, fig.width=8}
+```{r case_rate_by_county, fig.height=3.15, fig.width=8}
 rate_per_county_result <- rate_per_county_graph()
 rate_per_county_result$plot
 ```
