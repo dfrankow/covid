@@ -650,7 +650,7 @@ Uses confirmed data (all delayed 7 days except for deaths).
 - daily deaths **up**
  `r sprintf("%+.0f", change_in_daily_deaths_rolling_l$delta)`
   (`r sprintf("%+.0f%%", change_in_daily_deaths_rolling_l$percent)`)
-  to an average of `r latest_daily_deaths_rolling`. (Today: `r latest_daily_deaths`.)
+  to an average of `r latest_daily_deaths_rolling` as of `r tail(deathdataf1, 1)$date`. (Today: `r latest_daily_deaths`.)
 
 - daily cases **up** `r sprintf("%+.0f%%", change_in_cases_rolling_l$percent)`,
   to **`r round(latest_cases_rolling)` per day** (7 days ago). (Today's cases: **`r todays_cases`**.)
@@ -687,11 +687,11 @@ peak_list <- function(rolling_vec, date_vec) {
   ))
 }
 
-icu_admits_peak <- peak_list(hospdata$icu_admits_rolling, hospdataf1$date)
+icu_admits_peak <- peak_list(hospdataf1$icu_admits_rolling, hospdataf1$date)
 
-all_admits_peak <- peak_list(hospdata$all_admits_rolling, hospdataf1$date)
+all_admits_peak <- peak_list(hospdataf1$all_admits_rolling, hospdataf1$date)
 
-daily_deaths_peak <- peak_list(deathdata$daily_deaths_rolling, deathdata$date)
+daily_deaths_peak <- peak_list(deathdataf1$daily_deaths_rolling, deathdataf1$date)
 
 positive_cases_peak <- peak_list(casedataf1$positive_cases_rolling, casedataf1$date)
 
