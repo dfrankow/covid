@@ -334,11 +334,8 @@ hospdata <- read_tsv('data/hosptable.tsv')
 names(hospdata) <- c('date', 'icu_admits', 'all_admits',
                     'total_hosp', 'total_icu_hosp')
 hospdata <- hospdata %>% mutate(
-  # Get the year right:
-  the_year = ifelse(row_number() <= 302, "2020", "2021"),
-  date = as.Date(paste0(the_year, "/", date), format="%Y/%m/%d"),
+  date = as.Date(date, format="%m/%d/%y"),
   gt_prev_date = date > lag(date),
-  # july 4 had "-" in the data
   icu_admits = as.numeric(icu_admits),
   all_admits = as.numeric(all_admits)
 ) %>%
@@ -481,9 +478,7 @@ names(casedata) <- c(
   'cumulative_positive_cases')
 casedata <- casedata %>%
   mutate(
-    # Get the year right:
-    the_year = ifelse(row_number() <= 302, "2020", "2021"),
-    date = as.Date(paste0(the_year, "/", date), format="%Y/%m/%d"),
+    date = as.Date(date, format="%m/%d/%y"),
     gt_prev_date = date > lag(date),
     positive_cases = cumulative_positive_cases - lag(cumulative_positive_cases)
   ) %>%
@@ -528,7 +523,6 @@ names(labdata) <- c(
   'total_cumulative_tests')
 labdata <- labdata %>%
   mutate(
-    # Get the year right:
     date = as.Date(date, format="%m/%d/%y"),
     lag_date = lag(date),
     gt_prev_date = date > lag(date),
