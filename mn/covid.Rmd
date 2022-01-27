@@ -97,15 +97,18 @@ wastewater_graph <- function() {
 
   p<-ggplot(wwdata %>% filter(date >= first_day),
          aes(date, viral_load_rolling)) +
-    geom_line() +
-    geom_point(aes(y=viral_load), size=1, alpha=0.3) +
+    geom_line(size=1) +
+    geom_line(aes(y=viral_load), alpha=0.25) +
+    geom_point(aes(y=viral_load), alpha=0.25) +
     labs(y="viral load (avg), M copies/person/day",
          title='Wastewater viral load',
          subtitle=paste0('average ',
                   round(tail(wwdata$viral_load_rolling, 1)),
                   "M, 14-day change ", viral_load_percent,
                   '. As of ', max(wwdata$date), '.')
-         )
+         ) +
+    scale_size_identity() +
+    scale_alpha_identity()
 
   return(list(data=wwdata, plot=p))
 }
