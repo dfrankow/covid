@@ -81,15 +81,7 @@ ROLLING_WINDOW <- 7
 
 ```{r wastewater_graph}
 wastewater_graph <- function() {
-  wwdata <- read_csv('data/wastewater.csv')
-  names(wwdata) <- c(
-    'date',
-    'viral_load', 'viral_load_stderr',
-    'total_cases', 'new_cases',
-    'cases_per_capita', 'cases_per_capita_7day',
-    # Don't know what these are
-    'X8', 'X9'
-  )
+  wwdata <- read_csv('data/clean_load_data.csv')
   wwdata <- add_rolling_num(wwdata, 'viral_load', ROLLING_WINDOW)
   viral_load_change <- change_in_percent(
     wwdata$viral_load_rolling, CHANGE_WINDOW, unit='M')
