@@ -79,6 +79,36 @@ CHANGE_WINDOW <- 14
 ROLLING_WINDOW <- 7
 ```
 
+```{r wastewater_graph}
+wastewater_graph <- function() {
+  wwdata <- read_csv('data/Wastewater Treatment COVID-19 Monitoring Dashboard.csv')
+  names(wwdata) <- c(
+    'date',
+    'viral_load', 'viral_load_stderr',
+    'total_cases', 'new_cases',
+    'cases_per_capita', 'cases_per_capita_7day',
+    # Don't know what these are
+    'X8', 'X9'
+  )
+  wwdata <- add_rolling_num(wwdata, 'viral_load', ROLLING_WINDOW)
+  viral_load_percent <- change_in_percent(wwdata$viral_load_rolling, CHANGE_WINDOW)$str
+
+  p<-ggplot(wwdata %>% filter(date >= first_day),
+         aes(date, viral_load_rolling)) +
+    geom_line() +
+    geom_point(aes(y=viral_load), size=1, alpha=0.3) +
+    labs(y="viral load (avg), M copies/person/day",
+         title='Wastewater viral load',
+         subtitle=paste0('As of ', max(wwdata$date),
+           ". Average viral load ",
+                  round(tail(wwdata$viral_load_rolling, 1)),
+                  ", 14-day change ", viral_load_percent)
+         )
+
+  return(list(data=wwdata, plot=p))
+}
+```
+
 ```{r hospcapdata_graph}
 hospcapdata_graph <- function() {
   hospcapdata <- read_csv('data/HospitalCapacity_HistoricCSV_tcm1148-449110.csv')
@@ -562,8 +592,10 @@ tests_plot <- function() {
     scale_alpha_identity() +
     scale_x_date(date_minor_breaks="1 month")
 }
-tests_plot()
+# tests_plot()
 
+wastewater <- wastewater_graph()
+wastewater$plot
 
 ############ positive test rate
 caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
