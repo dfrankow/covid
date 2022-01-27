@@ -60,7 +60,7 @@ add_rolling_num <- function(df, col, window_days, suffix="_rolling") {
 #   df
 # }
 
-change_in_percent <- function(vec, window_days, round_n=0) {
+change_in_percent <- function(vec, window_days, round_n=0, unit='') {
   stopifnot(length(vec) >= window_days)
   last <- tail(vec, 1)
   last_minus <- coalesce(
@@ -70,7 +70,7 @@ change_in_percent <- function(vec, window_days, round_n=0) {
     head(tail(vec, window_days+0), 1),
   )
   delta <- (last - last_minus)
-  fmt <- paste0("%+.", round_n, "f (%+.", round_n, "f%%)")
+  fmt <- paste0("%+.", round_n, "f", unit, " (%+.", round_n, "f%%)")
   list(delta=delta, percent=100*delta/last_minus,
        str=sprintf(fmt, delta, 100* delta / last_minus, 1))
 }
@@ -91,7 +91,9 @@ wastewater_graph <- function() {
     'X8', 'X9'
   )
   wwdata <- add_rolling_num(wwdata, 'viral_load', ROLLING_WINDOW)
-  viral_load_percent <- change_in_percent(wwdata$viral_load_rolling, CHANGE_WINDOW)$str
+  viral_load_change <- change_in_percent(
+    wwdata$viral_load_rolling, CHANGE_WINDOW, unit='M')
+  viral_load_percent <- viral_load_change$str
 
   p<-ggplot(wwdata %>% filter(date >= first_day),
          aes(date, viral_load_rolling)) +
@@ -99,10 +101,10 @@ wastewater_graph <- function() {
     geom_point(aes(y=viral_load), size=1, alpha=0.3) +
     labs(y="viral load (avg), M copies/person/day",
          title='Wastewater viral load',
-         subtitle=paste0('As of ', max(wwdata$date),
-           ". Average viral load ",
+         subtitle=paste0('average ',
                   round(tail(wwdata$viral_load_rolling, 1)),
-                  ", 14-day change ", viral_load_percent)
+                  "M, 14-day change ", viral_load_percent,
+                  '. As of ', max(wwdata$date), '.')
          )
 
   return(list(data=wwdata, plot=p))
