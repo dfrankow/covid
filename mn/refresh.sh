@@ -1,5 +1,7 @@
 #!/bin/bash -ex
 
+mv ~/Downloads/Wastewater\ Treatment\ COVID-19\ Monitoring\ Dashboard.csv data/wastewater.csv
+
 wget -O situation.html https://www.health.state.mn.us/diseases/coronavirus/situation.html
 
 wget -O data/wcrmap.csv 'https://www.health.state.mn.us/diseases/coronavirus/stats/wcrmap.csv'
@@ -22,6 +24,7 @@ Rscript -e 'rmarkdown::render("covid.Rmd")'
 the_date=`date +"%Y%m%d"`
 # the_date='20210730'
 
+cp data/wastewater.csv data/wastewater.${the_date}.csv
 cp data/wcrmap.csv data/wcrmap.${the_date}.csv
 # cp data/vaxadminbyweek.csv data/vaxadminbyweek.${the_date}.csv
 mv covid.pdf covid.${the_date}.pdf

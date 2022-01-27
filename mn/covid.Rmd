@@ -81,7 +81,7 @@ ROLLING_WINDOW <- 7
 
 ```{r wastewater_graph}
 wastewater_graph <- function() {
-  wwdata <- read_csv('data/Wastewater Treatment COVID-19 Monitoring Dashboard.csv')
+  wwdata <- read_csv('data/wastewater.csv')
   names(wwdata) <- c(
     'date',
     'viral_load', 'viral_load_stderr',
