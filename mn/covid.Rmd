@@ -82,22 +82,24 @@ ROLLING_WINDOW <- 7
 ```{r wastewater_graph}
 wastewater_graph <- function() {
   wwdata <- read_csv('data/clean_load_data.csv')
-  wwdata <- add_rolling_num(wwdata, 'viral_load', ROLLING_WINDOW)
+  # wwdata <- add_rolling_num(wwdata, 'viral_load', ROLLING_WINDOW)
   viral_load_change <- change_in_percent(
-    wwdata$viral_load_rolling, CHANGE_WINDOW, unit='M')
+    wwdata$copies_day_person_7day, CHANGE_WINDOW, unit='M')
   viral_load_percent <- viral_load_change$str
 
   p<-ggplot(wwdata %>% filter(date >= first_day),
-         aes(date, viral_load_rolling)) +
+         aes(date, copies_day_person_7day)) +
     geom_line(size=1) +
-    geom_line(aes(y=viral_load), alpha=0.25) +
-    geom_point(aes(y=viral_load), alpha=0.25) +
+    geom_line(aes(y=copies_day_person_M_mn), alpha=0.25) +
+    geom_point(aes(y=copies_day_person_M_mn), alpha=0.25) +
     labs(y="viral load, M copies/person/day",
-         title='Wastewater viral load',
+         title='Wastewater viral load (metro)',
          subtitle=paste0('average ',
-                  round(tail(wwdata$viral_load_rolling, 1)),
+                  round(tail(wwdata$copies_day_person_7day, 1)),
                   "M, 14-day change ", viral_load_percent,
-                  '. As of ', max(wwdata$date), '.')
+                  '. As of ', max(wwdata$date), '.',
+                  '\nFrom the Metro treatment plant in Saint Paul,',
+                  ' serving the 7-county metro.')
          ) +
     scale_x_date(date_minor_breaks="1 month", date_labels="%b") +
     scale_size_identity() +
@@ -244,7 +246,8 @@ vaccine_plot <- function() {
       start_date = parse_date(start_date, "%m/%d/%Y"),
       end_date = start_date + 7
     ) %>%
-    filter(!is.na(start_date))
+    filter(!is.na(start_date)) %>%
+    filter(start_date >= first_day)
   vax_this_week <- vax %>% tail(1)
   p<-ggplot(vax, aes(start_date, num_administered)) +
     geom_bar(stat="identity") +
@@ -389,7 +392,10 @@ last_day <- max(hospdata$date, na.rm=T)
 # first_day <- last_day - 28*5
 # last 365 days
 # first_day <- last_day - 365
-first_day <- as.Date('2021-03-01')
+# first_day <- as.Date('2021-03-01')
+# first_day <- as.Date('2022-01-01')
+
+first_day <- last_day - 364 - 28
 
 # hospdata <- hospdata %>% filter(date <= last_day)
 
@@ -418,28 +424,30 @@ hospdata_long <- hospdata %>%
          size = ifelse(name %in% c('icu_admits', 'all_admits'), 0.25, 1)) %>%
   filter(!(name %in% c('icu_admits_rolling', 'all_admits_rolling') & (date > max(hospdataf1$date, na.rm=T))))
 
-ggplot(hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
-       aes(date, value, group=name, color=color)) +
-  geom_point(alpha=0.25) +
-  geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits_rolling', 'all_admits_rolling')),
-            aes(size=size, alpha=size)) +
-  geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits'))
-            %>% filter(date >= first_day),
-            aes(size=size, alpha=size)) +
-  labs(title="Hospital admissions",
-       subtitle=paste0(
-                "icu admits average ", round(tail(hospdata$icu_admits_rolling, 1)),
-                ", 14-day change ", icu_admits_rolling_delta7_percent,
-                "\nall admits average ",
-                round(tail(hospdata$all_admits_rolling, 1)),
-                ", 14-day change ", all_admits_rolling_delta7_percent, "\n",
-                "Last 7 days may have incomplete data."),
-       y="admitted on a given date.") +
-  scale_y_continuous(limits=c(0,NA)) +
-  scale_size_identity() +
-  scale_alpha_identity() +
-  scale_x_date(date_minor_breaks="1 month")
-
+both_admits_plot <- function() {
+  ggplot(hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits')),
+         aes(date, value, group=name, color=color)) +
+    geom_point(alpha=0.25) +
+    geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits_rolling', 'all_admits_rolling')),
+              aes(size=size, alpha=size)) +
+    geom_line(data=hospdata_long %>% filter(name %in% c('icu_admits', 'all_admits'))
+              %>% filter(date >= first_day),
+              aes(size=size, alpha=size)) +
+    labs(title="Hospital admissions",
+         subtitle=paste0(
+           "icu admits average ", round(tail(hospdata$icu_admits_rolling, 1)),
+           ", 14-day change ", icu_admits_rolling_delta7_percent,
+           "\nall admits average ",
+           round(tail(hospdata$all_admits_rolling, 1)),
+           ", 14-day change ", all_admits_rolling_delta7_percent, "\n",
+           "Last 7 days may have incomplete data."),
+         y="admitted on a given date.") +
+    scale_y_continuous(limits=c(0,NA)) +
+    scale_size_identity() +
+    scale_alpha_identity() +
+    scale_x_date(date_minor_breaks="1 month")
+}
+# both_admits_plot()
 # rm(hospdata)
 # rm(hospdata_long)
 
@@ -476,23 +484,26 @@ deathdataf1 <- head(deathdataf,-7)
 change_in_daily_deaths_rolling_l <- change_in_percent(deathdataf1$daily_deaths_rolling, CHANGE_WINDOW)
 latest_daily_deaths_rolling <- round(tail(deathdataf1$daily_deaths_rolling, 1))
 latest_daily_deaths <- tail(deathdataf1$daily_deaths, 1)
-ggplot(deathdata %>% filter(date >= first_day),
-       aes(date, daily_deaths)) +
-  geom_point(aes(y=daily_deaths, alpha=alpha)) +
-  geom_line(data=deathdataf1 %>% filter(date >= first_day),
-            aes(y=daily_deaths_rolling), size=1) +
-  geom_line(aes(y=daily_deaths, alpha=alpha)) +
-  labs(title="Daily deaths",
-       subtitle=paste0(
-         "average ", latest_daily_deaths_rolling,
-         ", 14-day change ",
-         change_in_daily_deaths_rolling_l$str,
-         ".  Last several days may have incomplete data."
-         # "\n** As if March 9 had 2 deaths reported."
+death_plot <- function() {
+  ggplot(deathdata %>% filter(date >= first_day),
+         aes(date, daily_deaths)) +
+    geom_point(aes(y=daily_deaths, alpha=alpha)) +
+    geom_line(data=deathdataf1 %>% filter(date >= first_day),
+              aes(y=daily_deaths_rolling), size=1) +
+    geom_line(aes(y=daily_deaths, alpha=alpha)) +
+    labs(title="Daily deaths",
+         subtitle=paste0(
+           "average ", latest_daily_deaths_rolling,
+           ", 14-day change ",
+           change_in_daily_deaths_rolling_l$str,
+           ".  Last several days may have incomplete data."
+           # "\n** As if March 9 had 2 deaths reported."
          )) +
-  scale_y_continuous(limits=c(0,NA)) +
-  scale_alpha_identity() +
-  scale_x_date(date_minor_breaks="1 month")
+    scale_y_continuous(limits=c(0,NA)) +
+    scale_alpha_identity() +
+    scale_x_date(date_minor_breaks="1 month")
+}
+death_plot()
 
 ########## confirmed cases - last 7 days may be incomplete
 
@@ -604,21 +615,24 @@ caselabdataf <- head(caselabdata, -7)
 
 change_in_pos_rate_l <- change_in_percent(100*caselabdataf$positive_rate7, CHANGE_WINDOW, 1)
 latest_pos_rate_rolling <- tail(caselabdataf$positive_rate7, 1)
-ggplot(caselabdata %>% filter(date >= first_day),
-       aes(date, positive_rate7)) +
-  geom_point(aes(alpha=alpha)) +
-  geom_line(aes(alpha=alpha)) +
-  labs(title="Positive test rate (unofficial)",
-       subtitle=paste0(
-         "average ", round(tail(100*caselabdataf$positive_rate7, 1), 1),
-         "%, 14-day change ",
-         change_in_pos_rate_l$str, ".",
-         "  Last 7 days may have incomplete data."),
-       y="confirmed cases / tests (rolling 7 days)") +
-  scale_y_continuous(limits=c(0,NA), labels=percent) +
-  scale_alpha_identity() +
-  geom_hline(yintercept=0.05, linetype='dashed') +
-  scale_x_date(date_minor_breaks="1 month")
+test_rate_plot <- function() {
+  ggplot(caselabdata %>% filter(date >= first_day),
+         aes(date, positive_rate7)) +
+    geom_point(aes(alpha=alpha)) +
+    geom_line(aes(alpha=alpha)) +
+    labs(title="Positive test rate (unofficial)",
+         subtitle=paste0(
+           "average ", round(tail(100*caselabdataf$positive_rate7, 1), 1),
+           "%, 14-day change ",
+           change_in_pos_rate_l$str, ".",
+           "  Last 7 days may have incomplete data."),
+         y="confirmed cases / tests (rolling 7 days)") +
+    scale_y_continuous(limits=c(0,NA), labels=percent) +
+    scale_alpha_identity() +
+    geom_hline(yintercept=0.05, linetype='dashed') +
+    scale_x_date(date_minor_breaks="1 month")
+}
+# test_rate_plot()
 
 vacc_result <- vaccine_plot()
 vacc_result$plot
