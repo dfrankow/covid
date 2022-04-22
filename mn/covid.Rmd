@@ -448,6 +448,31 @@ both_admits_plot <- function() {
     scale_x_date(date_minor_breaks="1 month")
 }
 # both_admits_plot()
+
+admits_plot <- function(title, admits_series_name, admits_rolling_series_name) {
+  admits_series <- hospdata_long %>% filter(name %in% c(admits_series_name))
+  admits_rolling_series <- hospdata_long %>% filter(name %in% c(admits_rolling_series_name))
+  
+  admits_rolling_delta7_percent_l <- change_in_percent(admits_rolling_series$value, CHANGE_WINDOW)
+
+  ggplot(admits_series, aes(date, value)) +
+    geom_point(alpha=0.25) +
+    geom_line(data=admits_rolling_series, aes(size=size, alpha=size)) +
+    geom_line(data=admits_series %>% filter(date >= first_day),
+              aes(size=size, alpha=size)) +
+    labs(title=title,
+         subtitle=paste0(
+           "average ", round(tail(admits_rolling_series$value, 1)),
+           ", 14-day change ", admits_rolling_delta7_percent_l$str, ". ",
+           "Last 7 days may have incomplete data."),
+         y="admitted on a given date.") +
+    scale_y_continuous(limits=c(0,NA)) +
+    scale_size_identity() +
+    scale_alpha_identity() +
+    scale_x_date(date_minor_breaks="1 month")
+}
+
+
 # rm(hospdata)
 # rm(hospdata_long)
 
@@ -503,7 +528,7 @@ death_plot <- function() {
     scale_alpha_identity() +
     scale_x_date(date_minor_breaks="1 month")
 }
-death_plot()
+# death_plot()
 
 ########## confirmed cases - last 7 days may be incomplete
 
@@ -532,22 +557,23 @@ casedataf <- casedata # %>% filter(date >= first_day)
 casedataf1 <- head(casedataf,-7)
 change_in_cases_rolling_l <- change_in_percent(casedataf1$positive_cases_rolling, CHANGE_WINDOW)
 latest_cases_rolling <- tail(casedataf1$positive_cases_rolling, 1)
-ggplot(casedataf %>% filter(date > first_day),
-       aes(date, positive_cases)) +
-  geom_point(aes(alpha=alpha)) +
-  geom_line(aes(alpha=alpha)) +
-  geom_line(data=casedataf1 %>% filter(date >= first_day),
-            aes(y=positive_cases_rolling), size=1) +
-  labs(title="Daily cases (PCR+antigen)",
-       subtitle=paste0(
-         "average ", round(tail(casedataf1$positive_cases_rolling, 1)),
-         ", 14-day change ",
-         change_in_cases_rolling_l$str, ".",
-         "  Last 7 days may have incomplete data.")) +
-  scale_y_continuous(limits=c(0,NA)) +
-  scale_alpha_identity() +
-  scale_x_date(date_minor_breaks="1 month")
-
+case_plot <- function() {
+  ggplot(casedataf %>% filter(date > first_day),
+         aes(date, positive_cases)) +
+    geom_point(aes(alpha=alpha)) +
+    geom_line(aes(alpha=alpha)) +
+    geom_line(data=casedataf1 %>% filter(date >= first_day),
+              aes(y=positive_cases_rolling), size=1) +
+    labs(title="Daily cases (PCR+antigen)",
+         subtitle=paste0(
+           "average ", round(tail(casedataf1$positive_cases_rolling, 1)),
+           ", 14-day change ",
+           change_in_cases_rolling_l$str, ".",
+           "  Last 7 days may have incomplete data.")) +
+    scale_y_continuous(limits=c(0,NA)) +
+    scale_alpha_identity() +
+    scale_x_date(date_minor_breaks="1 month")
+}
 
 ########## tests - last 7 days may be incomplete
 
@@ -604,7 +630,6 @@ tests_plot <- function() {
 # tests_plot()
 
 wastewater <- wastewater_graph()
-wastewater$plot
 
 ############ positive test rate
 caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
@@ -634,7 +659,14 @@ test_rate_plot <- function() {
 }
 # test_rate_plot()
 
+case_plot()
+death_plot()
+
+admits_plot('ICU admissions', 'icu_admits', 'icu_admits_rolling')
+admits_plot('All admissions', 'all_admits', 'all_admits_rolling')
+
 vacc_result <- vaccine_plot()
+wastewater$plot
 vacc_result$plot
 ```
 
