@@ -1,7 +1,5 @@
 #!/bin/bash -ex
 
-mv ~/Downloads/Wastewater\ Treatment\ COVID-19\ Monitoring\ Dashboard.csv data/wastewater.csv
-
 wget -O situation.html https://www.health.state.mn.us/diseases/coronavirus/situation.html
 
 wget -O data/wcrmap.csv 'https://www.health.state.mn.us/diseases/coronavirus/stats/wcrmap.csv'
