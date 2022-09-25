@@ -93,6 +93,7 @@ wastewater_graph <- function() {
     geom_line(aes(y=copies_day_person_M_mn), alpha=0.25) +
     geom_point(aes(y=copies_day_person_M_mn), alpha=0.25) +
     labs(y="viral load, M copies/person/day",
+         x=NULL,
          title='Wastewater viral load (metro)',
          subtitle=paste0('average ',
                   round(tail(wwdata$copies_day_person_7day, 1)),
@@ -101,7 +102,7 @@ wastewater_graph <- function() {
                   '\nFrom the Metro treatment plant in Saint Paul,',
                   ' serving the 7-county metro.')
          ) +
-    scale_x_date(date_minor_breaks="1 month", date_labels="%b") +
+    scale_x_date(date_minor_breaks="1 month", date_labels="%b %Y") +
     scale_size_identity() +
     scale_alpha_identity()
 
@@ -109,134 +110,8 @@ wastewater_graph <- function() {
 }
 ```
 
-```{r hospcapdata_graph}
-hospcapdata_graph <- function() {
-  hospcapdata <- read_csv('data/HospitalCapacity_HistoricCSV_tcm1148-449110.csv')
-  hospcapdata <- hospcapdata %>% rename(
-    date=`Data Date (MM/DD/YYYY)`,
-    value=Value_NUMBER,
-    metric=Metric
-  )
-  hospcapdata <- hospcapdata %>% mutate(
-    date = as.Date(date, "%m/%d/%Y"),
-    metric = gsub("Number of ", "", metric),
-    Detail2 = tolower(Detail2),
-    metric1 = if_else(metric == "beds",
-                      paste(metric, Detail1, coalesce(Detail3, "")),
-                      if_else(metric == "patients",
-                              paste(metric, Detail1, Detail3),
-                              if_else(metric == "ventilators",
-                                      paste(metric, Detail2, coalesce(Detail3, ""),
-                                            coalesce(Detail4, "")),
-                                      "??"
-                              ))),
-    metric1 = gsub("\\+", "", metric1),
-    metric1 = gsub(" +$", "", metric1)
-  ) %>%
-    arrange(date)
-  
-  # ggplot(hospcapdata, aes(date, value, group=metric1, color=metric1)) + geom_line()
-  
-  hospcapdata_wide <- hospcapdata %>%
-    pivot_wider(id_cols=date, names_from=metric1, values_from=value)
-  hospcapdata_wide <- hospcapdata_wide %>%
-    mutate(
-      icu_bed_capacity_used = (`patients ICU COVID` + `patients ICU non-COVID`) /
-        `beds ICU`,
-      non_icu_bed_capacity_used = (`patients Non-ICU COVID` + `patients Non-ICU non-COVID`) /
-        `beds Non-ICU`,
-      ventilator_capacity_used = `ventilators in use` / `ventilators capacity`
-    ) %>%
-    add_rolling_num('icu_bed_capacity_used', ROLLING_WINDOW) %>%
-    add_rolling_num('non_icu_bed_capacity_used', ROLLING_WINDOW) %>%
-    add_rolling_num('ventilator_capacity_used', ROLLING_WINDOW)
-  
-  hospcapdata_used <- hospcapdata_wide %>%
-    select(date,
-           icu_bed_capacity_used,
-           non_icu_bed_capacity_used,
-           ventilator_capacity_used,
-           icu_bed_capacity_used_rolling,
-           non_icu_bed_capacity_used_rolling,
-           ventilator_capacity_used_rolling
-    ) %>%
-    rename_with(~gsub('_capacity_used', '', .x)) %>%
-    pivot_longer(cols=!date,
-                 names_to = "type", values_to="capacity_used")
-  
-  hospcapdata_maxdate <- max(hospcapdata$date)
-  hospcapdata_used <- hospcapdata_used %>%
-    mutate(
-      type = gsub("non_icu_bed", "non-ICU bed", type),
-      type = gsub("icu_bed", "ICU bed", type),
-      type = gsub("_rolling", " (rolling)", type),
-      alpha = if_else(date > (hospcapdata_maxdate - 4), 0.4, 1),
-      alpha = if_else(!grepl("rolling", type), 0.35, alpha),
-      size = if_else(grepl("rolling", type), 2, 1),
-      name = if_else(grepl("ventilator", type), "ventilator",
-                     if_else(grepl("non-ICU bed", type), "non-ICU bed",
-                             if_else(grepl("ICU bed", type), "ICU bed",
-                                     "??"))))
-  
-  hospcapdata_wide_m4 <- head(hospcapdata_wide,-4)
-  
-  # change in icu_bed_capacity_used_rolling over last CHANGE_WINDOW days
-  icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$icu_bed_capacity_used_rolling, CHANGE_WINDOW)$str
-  
-  # change in non_icu_bed_capacity_used_rolling over last CHANGE_WINDOW days
-  non_icu_bed_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$non_icu_bed_capacity_used_rolling, CHANGE_WINDOW)$str
-  
-  # change in ventilator_capacity_used_rolling over last CHANGE_WINDOW days
-  ventilator_capacity_delta_percent <- change_in_percent(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, CHANGE_WINDOW)$str
-  
-  p <- ggplot(hospcapdata_used, aes(date, capacity_used,
-                               group=type,
-                               color=name,
-                               alpha=alpha,
-                               size=size)) +
-    geom_line() +
-    geom_point(data=hospcapdata_used %>% filter(!grepl("rolling", type))) +
-    scale_y_continuous(limits=c(0, 1), labels=scales::percent) +
-    labs(title="Bed and ventilator capacity used",
-         subtitle=paste(
-           "Not including surge capacity.  Data may change in last 4 days.",
-           paste0("icu bed capacity used average ",
-                  round(tail(100*hospcapdata_wide_m4$icu_bed_capacity_used_rolling, 1)),
-                  "%, 14-day change ", icu_bed_capacity_delta_percent),
-           paste0("non-icu bed capacity used average ",
-                  round(tail(100*hospcapdata_wide_m4$non_icu_bed_capacity_used_rolling, 1)),
-                  "%, 14-day change ", non_icu_bed_capacity_delta_percent),
-           paste0("ventilator capacity used average ",
-                  round(tail(100*hospcapdata_wide_m4$ventilator_capacity_used_rolling, 1)),
-                  "%, 14-day change ", ventilator_capacity_delta_percent),
-           sep="\n"),
-         y="% capacity used") +
-    scale_alpha_identity() +
-    scale_size_identity()
-  
-  # Older, simpler graph:
-  if (FALSE) {
-    p <- ggplot(hospcapdata_used %>% filter(!grepl("rolling", type)),
-           aes(date, capacity_used,
-               group=type,
-               color=name,
-               alpha=if_else(date > (hospcapdata_maxdate-4), 0.35, 1))) +
-      geom_line() +
-      geom_point() +
-      scale_y_continuous(limits=c(0, 1), labels=scales::percent) +
-      labs(title="Bed and ventilator capacity used",
-           subtitle="Not including surge capacity.  Data may change in last 4 days.",
-           y="% capacity used") +
-      scale_alpha_identity() +
-      scale_size_identity()
-  }
-  p
-}
-```
-
 ```{r vaccine_plot}
 vaccine_plot <- function() {
-  library(lubridate)
   vax <- read_csv('data/vaxadminbyweek.csv') %>%
     rename(start_date=`Week Start Date`,
            num_administered=`Doses Administered Per Week`,
@@ -251,25 +126,17 @@ vaccine_plot <- function() {
   vax_this_week <- vax %>% tail(1)
   p<-ggplot(vax, aes(start_date, num_administered)) +
     geom_bar(stat="identity") +
-    # scale_x_date(
-      # breaks=vax$start_date,
-      # labels=function(breaks) {
-      #   vax %>% inner_join(data.frame(start_date=breaks)) %>%
-      #     mutate(the_label=format(start_date, "%b %e"),
-      #       the_label=gsub("  ", " ", the_label)) %>%
-      #     pull(the_label)
-      # }
-      #           date_labels="%b %e"
-      #           ) +
     scale_y_continuous(labels=comma) +
     scale_x_date(date_breaks="1 month", date_labels="%b") +
     labs(x="Week (so far)", y="# doses administered",
          title="Vaccines administered",
          subtitle=paste0(
-           vax_this_week$num_administered, " in the latest week, ",
-           vax_this_week$total_administered, " total so far.",
+           format(vax_this_week$num_administered, big.mark=",", scientific=F),
+           " in the latest week, ",
+           format(vax_this_week$total_administered, big.mark=",", scientific=F),
+           " total so far.",
            " Includes current partial week."))
-  # + theme(axis.text.x = element_text(angle = 10))
+    # + theme(axis.text.x = element_text(angle = 20))
 
   return(list(plot=p, data=vax))
 }
@@ -278,44 +145,43 @@ vaccine_plot <- function() {
 
 ```{r per_county_graph}
 rate_per_county_graph <- function(num_panels=4) {
-  wcr_by_county_raw <- read_csv('data/wcrmap.csv')
-  wcr_by_county <- wcr_by_county_raw %>%
-    mutate(panel = floor((row_number()-1) / 88 * num_panels)) %>%
-    pivot_longer(starts_with('Week'), names_to='week') %>%
-    mutate(week1 = gsub("Week \\d+: ", "", week),
-           week1a = gsub("-", "-\n", week1),
-           week1a_start = parse_date_time(gsub("-.+", "", week1), orders=c("mdy")),
-           # week1b is "41, "42", "43", ..
-           week1b = gsub("Week (\\d+):.+", "\\1", week),
-#           value1 = cut(value, c(-1,0,10,25,50,75,100,125,150,Inf), ordered_result = T),
-           value1 = cut(value, c(-1,0,10,25,50,75,Inf), ordered_result = T)
-    ) %>%
+  by_county_raw <- read_csv('data/county_rates.csv') %>%
+    filter(state == "Minnesota")
+  # last four dates
+  last_five <- tail(sort(unique(by_county_raw$date_updated)), 5)
+  by_county_raw <- by_county_raw %>% filter(date_updated %in% last_five)
+  # add week number
+  by_county <- by_county_raw %>%
     mutate(
-      # level week1a by its occurrence in wcr_by_county
-      # this relies on the weeks being in order after pivot_longer,
-      # but that seems like a good bet to me
-      week1a = factor(week1a, levels=unique(week1a)),
-      week1b = factor(week1b, levels=unique(week1b), ordered=T)
-    )
-  # week_key_str: key for week numbers
-  # collapse all the weeks
-  # then remove all the "Week", but add one back
-  week_key_str <- paste(unique(wcr_by_county$week), collapse="; ")
-  week_key_str <- paste0("Week: ",
-                         gsub(":", " is", gsub("Week ", "", week_key_str)))
+      week_number = as.factor(week(date_updated)),
+      county = gsub(" County", "", county),
+      covid_cases_per_10k = covid_cases_per_100k / 10,
+      covid_cases_per_10k_bucket = 
+        cut(covid_cases_per_10k,
+            c(-1,0,10,25,50,75,Inf), ordered_result = T)
+    ) %>%
+    select(county, covid_cases_per_10k, covid_cases_per_10k_bucket,
+           date_updated, week_number)
+
+  # Assign each county to a panel
+  county_panel <- by_county %>% group_by(county) %>%
+    summarize() %>%
+    mutate(panel = floor((row_number()-1) / (length(county) / num_panels)))
+  by_county <- by_county %>% merge(county_panel, by=c('county'))
 
   # rate level names:
-  levels(wcr_by_county$value1) <-
+  levels(by_county$covid_cases_per_10k_bucket) <-
     c("0", ">0 to <10", "10 to <25", "25 to <50",
       '50 to <75', '>=75')
-
-  # levels(wcr_by_county$value1) <-
-  #   c("0", ">0 to <10", "10 to <25", "25 to <50",
-  #     '50 to <75', '75 to <100', '100 to <125', '125 to <150', ">=150")
+  weeks <- by_county %>% group_by(week_number, date_updated) %>%
+    summarize() %>%
+    mutate(week_str = paste0(week_number, " ends ", date_updated))
+  week_key_str <- paste0("Weeks: ", paste(weeks$week_str, collapse=", "))
 
   plot <- ggplot(
-    wcr_by_county,
-    aes(week1b, County, fill=value1)) +
+    by_county,
+    aes(week_number, county,
+        fill=covid_cases_per_10k_bucket)) +
     geom_tile() +
     scale_y_discrete(limits = rev) +
     scale_x_discrete(position="top") +
@@ -334,15 +200,16 @@ rate_per_county_graph <- function(num_panels=4) {
       plot.subtitle=element_text(size = rel(0.8))
     )
 
-  latest_week1b <- max(wcr_by_county$week1b)
-  wcr_by_county_latest <- wcr_by_county %>% filter(week1b == latest_week1b)
-  value1_summ <- wcr_by_county_latest %>%
-    group_by(value1) %>% tally() %>% arrange(desc(value1)) %>%
+  latest_week <- max(as.character(by_county$week_number))
+  by_county_latest <- by_county %>% filter(week_number == latest_week)
+  value1_summ <- by_county_latest %>%
+    group_by(covid_cases_per_10k_bucket) %>% tally() %>% 
+    arrange(desc(covid_cases_per_10k_bucket)) %>%
     mutate(perc = 100 * n / sum(n), cum_perc = 100 * cumsum(n) / sum(n))
   return(list(plot=plot,
               rate_hist=value1_summ,
-              wcr_by_county_latest=wcr_by_county_latest,
-              wcr_by_county=wcr_by_county))
+              wcr_by_county_latest=by_county_latest,
+              wcr_by_county=by_county))
 }
 ```
 
@@ -361,23 +228,18 @@ days_on_hand_graph <- function() {
 ```{r graphs, fig.show = "hold", out.width = "50%"}
 ########## hospitalized
 
-hospdata <- read_tsv('data/hosptable.tsv')
-names(hospdata) <- c('date', 'icu_admits', 'all_admits',
-                    'total_hosp', 'total_icu_hosp')
+hospdata <- read_csv('data/h7day.csv') %>%
+  select(-Rate, -total_pop) %>%
+  pivot_wider(names_from=outcome, values_from=case_count, values_fill=0) %>%
+  rename(all_admits=hospitalization, icu_admits=icu)
 hospdata <- hospdata %>% mutate(
-  date = as.Date(date, format="%m/%d/%y"),
-  gt_prev_date = date > lag(date),
-  icu_admits = as.numeric(icu_admits),
-  all_admits = as.numeric(all_admits)
-) %>%
-  # remove ill-formatted date like "unknown" that drops in at the end
-  filter(!is.na(date))
+  date = as.Date(date, format="%m/%d/%Y"),
+  gt_prev_date = date > lag(date)
+)
 
 # check we parsed the date correctly
 stopifnot(hospdata$gt_prev_date %in% c(TRUE, NA))
 
-# Weird data on Oct 3, 2020, where Oct 2 and 3 had a bunch of zeros
-# last_day <- hospdata %>% filter(all_admits > 0) %>% pull(date) %>% max(na.rm=T)
 last_day <- max(hospdata$date, na.rm=T)
 
 # last 4 weeks
@@ -441,7 +303,8 @@ both_admits_plot <- function() {
            round(tail(hospdata$all_admits_rolling, 1)),
            ", 14-day change ", all_admits_rolling_delta7_percent, "\n",
            "Last 7 days may have incomplete data."),
-         y="admitted on a given date.") +
+         y="admitted on a given date.",
+         x=NULL) +
     scale_y_continuous(limits=c(0,NA)) +
     scale_size_identity() +
     scale_alpha_identity() +
@@ -478,23 +341,16 @@ admits_plot <- function(title, admits_series_name, admits_rolling_series_name) {
 
 ########## deaths
 
-deathdata <- read_tsv('data/deathtable.tsv')
+deathdata <- read_csv('data/d7day.csv')
 
-# They switched how they reported the death data, so we shouldn't
-# need this hack anymore?
-# HACK(dan): Act like there were 2 deaths reported on 3/9 instead of 140
-# deathdata[deathdata$`Date reported` == "3/9/21",]$`Newly reported deaths` <- 2
-
-names(deathdata) <- c('date', 'daily_deaths', 'cumulative_deaths')
 deathdata <- deathdata %>%
   mutate(
     # the_year = ifelse(row_number() <= 290, "2020", "2021"),
     # date = as.Date(paste0(the_year, "/", date), format="%Y/%m/%d")
-    date = as.Date(date, format="%m/%d/%y"),
-    gt_prev_date = date > lag(date),
-    # july 4 had "-" in the data
-    daily_deaths = as.numeric(daily_deaths)
+    date = as.Date(date, format="%m/%d/%Y"),
+    gt_prev_date = date > lag(date)
   ) %>%
+  rename(daily_deaths = case_count) %>%
   add_rolling_num('daily_deaths', ROLLING_WINDOW)
 # we got the year right:
 stopifnot(deathdata$gt_prev_date %in% c(TRUE, NA))
@@ -523,141 +379,54 @@ death_plot <- function() {
            change_in_daily_deaths_rolling_l$str,
            ".  Last several days may have incomplete data."
            # "\n** As if March 9 had 2 deaths reported."
-         )) +
+         ),
+         x=NULL) +
     scale_y_continuous(limits=c(0,NA)) +
     scale_alpha_identity() +
-    scale_x_date(date_minor_breaks="1 month")
+    scale_x_date(date_minor_breaks="1 month", date_labels="%b %Y")
 }
 # death_plot()
 
 ########## confirmed cases - last 7 days may be incomplete
 
-casedata <- read_tsv('data/casetable.tsv')
-names(casedata) <- c(
-  'date',
-  'confirmed_cases',
-  'cumulative_confirmed_cases',
-  'probable_cases',
-  'cumulative_probable_cases',
-  'cumulative_positive_cases')
+casedata <- read_csv('data/c7day.csv')
 casedata <- casedata %>%
   mutate(
-    date = as.Date(date, format="%m/%d/%y"),
+    date = as.Date(date, format="%m/%d/%Y"),
     gt_prev_date = date > lag(date),
-    positive_cases = cumulative_positive_cases - lag(cumulative_positive_cases)
+    rn = row_number()
   ) %>%
   # ditch the date that can't be parsed
   filter(!is.na(date)) %>%
-  add_rolling_num('positive_cases', ROLLING_WINDOW)
+  add_rolling_num('case_count', ROLLING_WINDOW)
 stopifnot(casedata$gt_prev_date %in% c(TRUE, NA))
 
 # make alpha of last 7 days less
 casedata$alpha <- c(rep(0.25, nrow(casedata)-7), rep(the_alpha, 7))
 casedataf <- casedata # %>% filter(date >= first_day)
 casedataf1 <- head(casedataf,-7)
-change_in_cases_rolling_l <- change_in_percent(casedataf1$positive_cases_rolling, CHANGE_WINDOW)
-latest_cases_rolling <- tail(casedataf1$positive_cases_rolling, 1)
+change_in_cases_rolling_l <- change_in_percent(casedataf1$case_count_rolling, CHANGE_WINDOW)
+latest_cases_rolling <- tail(casedataf1$case_count_rolling, 1)
 case_plot <- function() {
   ggplot(casedataf %>% filter(date > first_day),
-         aes(date, positive_cases)) +
+         aes(date, case_count)) +
     geom_point(aes(alpha=alpha)) +
     geom_line(aes(alpha=alpha)) +
     geom_line(data=casedataf1 %>% filter(date >= first_day),
-              aes(y=positive_cases_rolling), size=1) +
-    labs(title="Daily cases (PCR+antigen)",
+              aes(y=case_count_rolling), size=1) +
+    labs(title="Daily cases",
          subtitle=paste0(
-           "average ", round(tail(casedataf1$positive_cases_rolling, 1)),
+           "average ", round(tail(casedataf1$case_count_rolling, 1)),
            ", 14-day change ",
            change_in_cases_rolling_l$str, ".",
-           "  Last 7 days may have incomplete data.")) +
+           "  Last 7 days may have incomplete data."),
+         x=NULL) +
     scale_y_continuous(limits=c(0,NA)) +
     scale_alpha_identity() +
-    scale_x_date(date_minor_breaks="1 month")
+    scale_x_date(date_minor_breaks="1 month", date_labels="%b %Y")
 }
-
-########## tests - last 7 days may be incomplete
-
-labdata <- read_tsv('data/labtable.tsv')
-names(labdata) <- c(
-  'date',
-  'mn_lab_tests_pcr',
-  'ext_lab_tests_pcr',
-  'cumulative_tests_pcr',
-  'ext_lab_tests_antigen',
-  'cumulative_tests_antigen',
-  'total_cumulative_tests')
-labdata <- labdata %>%
-  mutate(
-    date = as.Date(date, format="%m/%d/%y"),
-    lag_date = lag(date),
-    gt_prev_date = date > lag(date),
-    # commas throw things off
-    total_cumulative_tests = as.integer(gsub(",", "", total_cumulative_tests)),
-    daily_tests = total_cumulative_tests - lag(total_cumulative_tests),
-    cumulative_tests_pcr = as.integer(gsub(",", "", total_cumulative_tests)),
-    daily_tests_pcr = cumulative_tests_pcr - lag(cumulative_tests_pcr)
-  ) %>%
-  filter(!is.na(date)) %>%
-  add_rolling_num('daily_tests', ROLLING_WINDOW)
-stopifnot(labdata$gt_prev_date %in% c(TRUE, NA))
-
-
-# make alpha of last 7 days less
-labdata$alpha <- c(rep(0.25, nrow(labdata)-7), rep(the_alpha, 7))
-labdataf <- labdata # %>% filter(date >= first_day)
-labdataf1 <- head(labdataf, -7)
-change_in_daily_tests_rolling_l <- change_in_percent(labdataf1$daily_tests_rolling, CHANGE_WINDOW)
-
-############ tests plot
-tests_plot <- function() {
-  # test plot
-  ggplot(labdataf %>% filter(date >= first_day), aes(date, daily_tests)) +
-    geom_point(aes(alpha=alpha)) +
-    geom_line(data=labdataf %>% filter(date >= first_day),
-              aes(alpha=alpha)) +
-    geom_line(data=labdataf1 %>% filter(date >= first_day),
-              aes(y=daily_tests_rolling), size=1) +
-    labs(title="Daily tests (PCR+antigen)",
-         subtitle=paste0(
-           "average ", round(tail(labdataf1$daily_tests_rolling, 1)),
-           ", 14-day change ",
-           change_in_daily_tests_rolling_l$str, ".",
-           "  Last 7 days may have incomplete data.")) +
-    scale_y_continuous(limits=c(0,NA)) +
-    scale_alpha_identity() +
-    scale_x_date(date_minor_breaks="1 month")
-}
-# tests_plot()
 
 wastewater <- wastewater_graph()
-
-############ positive test rate
-caselabdata <- casedata %>% inner_join(labdata, by=c('date')) %>%
-  mutate(positive_rate7 = positive_cases_rolling / daily_tests_rolling)
-caselabdata$alpha <- c(rep(1, nrow(caselabdata)-7), rep(0.2, 7))
-
-caselabdataf <- head(caselabdata, -7)
-
-change_in_pos_rate_l <- change_in_percent(100*caselabdataf$positive_rate7, CHANGE_WINDOW, 1)
-latest_pos_rate_rolling <- tail(caselabdataf$positive_rate7, 1)
-test_rate_plot <- function() {
-  ggplot(caselabdata %>% filter(date >= first_day),
-         aes(date, positive_rate7)) +
-    geom_point(aes(alpha=alpha)) +
-    geom_line(aes(alpha=alpha)) +
-    labs(title="Positive test rate (unofficial)",
-         subtitle=paste0(
-           "average ", round(tail(100*caselabdataf$positive_rate7, 1), 1),
-           "%, 14-day change ",
-           change_in_pos_rate_l$str, ".",
-           "  Last 7 days may have incomplete data."),
-         y="confirmed cases / tests (rolling 7 days)") +
-    scale_y_continuous(limits=c(0,NA), labels=percent) +
-    scale_alpha_identity() +
-    geom_hline(yintercept=0.05, linetype='dashed') +
-    scale_x_date(date_minor_breaks="1 month")
-}
-# test_rate_plot()
 
 case_plot()
 death_plot()
@@ -688,10 +457,6 @@ dates <- rbind(dates,
                data.frame(name="deaths", max_date=max(deathdata$date, na.rm=T)))
 dates <- rbind(dates,
                data.frame(name="cases", max_date=max(casedataf$date)))
-dates <- rbind(dates,
-               data.frame(name="tests", max_date=max(labdataf$date)))
-dates <- rbind(dates,
-               data.frame(name="rates", max_date=max(caselabdata$date)))
 
 kable(dates)
 ```
@@ -727,11 +492,6 @@ Uses confirmed data (all delayed 7 days except for deaths).
 - daily cases **up** `r sprintf("%+.0f%%", change_in_cases_rolling_l$percent)`,
   to **`r round(latest_cases_rolling)` per day** (7 days ago). (Today's cases: **`r todays_cases`**.)
 
-- daily tests **up** `r sprintf("%+.0f%%", change_in_daily_tests_rolling_l$percent)`
-
-- positive test rate (unofficial): **`r sprintf("%+.1f%%", 100*latest_pos_rate_rolling)`** (>=5%),
- **up** `r sprintf("%+.1f%%", change_in_pos_rate_l$delta)`
-
 ## Per county summary
 
 ```{r per_county_summ}
@@ -765,11 +525,7 @@ all_admits_peak <- peak_list(hospdataf1$all_admits_rolling, hospdataf1$date)
 
 daily_deaths_peak <- peak_list(deathdataf1$daily_deaths_rolling, deathdataf1$date)
 
-positive_cases_peak <- peak_list(casedataf1$positive_cases_rolling, casedataf1$date)
-
-daily_tests_peak <- peak_list(labdataf1$daily_tests_rolling, labdataf1$date)
-
-positive_test_rate_peak <- peak_list(caselabdataf$positive_rate7, caselabdataf$date)
+case_count_peak <- peak_list(casedataf1$case_count_rolling, casedataf1$date)
 
 # No scientific notation:
 options(scipen=10)
@@ -781,19 +537,10 @@ options(scipen=10)
 
 - All daily admissions: currently at `r all_admits_peak$percent_peak_rolling`% of peak (`r round(all_admits_peak$max_rolling, 0)` people,  `r all_admits_peak$max_rolling_days` days ago)
 
-- Daily cases: currently at `r positive_cases_peak$percent_peak_rolling`% of peak (`r round(positive_cases_peak$max_rolling, 0)` cases,  `r positive_cases_peak$max_rolling_days` days ago)
-
-- Daily tests: currently at `r daily_tests_peak$percent_peak_rolling`% of peak (`r round(daily_tests_peak$max_rolling, 0)` tests,  `r daily_tests_peak$max_rolling_days` days ago)
-
-- Positive test rate: currently at `r positive_test_rate_peak$percent_peak_rolling`% of peak (`r round(100*positive_test_rate_peak$max_rolling, 1)`%,  `r positive_test_rate_peak$max_rolling_days` days ago)
+- Daily cases: currently at `r case_count_peak$percent_peak_rolling`% of peak (`r round(case_count_peak$max_rolling, 0)` cases,  `r case_count_peak$max_rolling_days` days ago)
 
 
 ## More plots
-
-```{r hospcap_plot}
-# doesn't seem useful:
-# hospcapdata_graph()
-```
 
 ```{r days_on_hand_plot}
 # doesn't seem useful:
